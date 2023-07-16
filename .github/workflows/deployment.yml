@@ -34,11 +34,11 @@ jobs:
         uses: digitalocean/action-doctl@v2
         with:
           token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
-      - name: Create Client Docker Image
+      - name: Create Bench Docs Docker Image
         run: docker build -t ${{env.DOCR_DOCS_CONTAINER}}:${{env.DOCR_TAG}} --no-cache -f Dockerfile .
       - name: Log in to DO Container Registry
         run: doctl registry login --expiry-seconds 600
-      - name: Push Service Docker Image to DOCR
+      - name: Push Bench Docs Docker Image to DOCR
         run: |
           docker tag ${{env.DOCR_DOCS_CONTAINER}} registry.digitalocean.com/${{env.DOCR_REPOSITORY}}/${{env.DOCR_DOCS_CONTAINER}}
           docker push registry.digitalocean.com/${{env.DOCR_REPOSITORY}}/${{env.DOCR_DOCS_CONTAINER}}
