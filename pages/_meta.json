@@ -1,0 +1,10 @@
+{
+  "index": "Introduction",
+  "another": "Another Page",
+  "advanced": "Advanced (A Folder)",
+  "about": {
+    "title": "About",
+    "type": "page",
+    "href": "https://bench-ai.com/product"
+  }
+}

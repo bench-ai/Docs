@@ -1,0 +1,31 @@
+{
+  "name": "bench-ai-docs",
+  "version": "0.0.1",
+  "description": "Learn how to use Bench AI to automate ML model training, testing, and deployment infrastructure and workflows on the cloud",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Bench-ai/Docs"
+  },
+  "author": "Bench AI, Inc.",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Bench-ai/BenchKit/issues"
+  },
+  "homepage": "https://bench-ai.com",
+  "dependencies": {
+    "next": "^13.0.6",
+    "nextra": "latest",
+    "nextra-theme-docs": "latest",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "18.11.10",
+    "typescript": "^4.9.3"
+  }
+}
