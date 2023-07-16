@@ -35,7 +35,7 @@ jobs:
         with:
           token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
       - name: Create Client Docker Image
-        run: docker build -t ${{env.DOCR_SERVICE_CONTAINER}}:${{env.DOCR_TAG}} --no-cache -f backend.Dockerfile .
+        run: docker build -t ${{env.DOCR_SERVICE_CONTAINER}}:${{env.DOCR_TAG}} --no-cache -f Dockerfile .
       - name: Log in to DO Container Registry
         run: doctl registry login --expiry-seconds 600
       - name: Push Service Docker Image to DOCR
