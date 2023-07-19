@@ -1,0 +1,47 @@
+# Bench Kit Installation
+
+System Requirements:
+- [Python 3.10 ↗](https://www.python.org/downloads/) or later
+- [PyTorch](https://pytorch.org/docs/stable/index.html) is supported
+- macOS, Windows (including WSL), and Linux are supported.
+
+## Automatic Installation
+
+We recommend creating a new Bench AI project using `pip`, which links everything automatically for you. To install run:
+```bash filename="> Terminal" copy
+pip install git+https://github.com/Bench-ai/BenchKit.git
+```
+
+Verify the installation by running:
+```bash filename="> Terminal" copy
+bench-kit --version
+```
+
+## Sync Your Project to Bench AI
+
+Now that you have Bench Kit installed on your code base, let's connect your code to your project on the [website!](https://bench-ai.com)
+
+All code intended to migrate must be written inside the project.
+
+A project must have the three main features: <b>models</b>, <b>dataloaders</b>, and <b>training scripts</b>.
+
+### Command Parameters
+The start-project command takes in two parameters: <b>project-id</b> and <b>api-key</b>
+
+import { Callout } from 'nextra/components'
+
+<Callout>
+    <b>Project IDs</b> can be found on the banner of you project's information page. It can also be found in your project's settings.
+</Callout>
+
+<Callout>
+    <b>API Keys</b> are generated when you first create your project and only shown once. If you wish to reset it, go to your project settings to do so.
+</Callout>
+
+### Run Command
+
+Run the following command in the root directory to connect your project and sync:
+```bash filename="> Terminal" copy
+bench-kit start-project <project-id> <api-key>
+```
+

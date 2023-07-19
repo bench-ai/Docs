@@ -1,9 +1,18 @@
 {
   "index": "Bench AI Docs",
-  "another": "Another Page",
-  "advanced": "Advanced (A Folder)",
+  "bench-kit": "Bench Kit",
+  "website": {
+    "title": "Website ↗",
+    "type": "page",
+    "href": "https://bench-ai.com"
+  },
+  "blog": {
+    "title": "Blog ↗",
+    "type": "page",
+    "href": "https://blog.bench-ai.com"
+  },
   "about": {
-    "title": "About",
+    "title": "About ↗",
     "type": "page",
     "href": "https://bench-ai.com/product"
   }

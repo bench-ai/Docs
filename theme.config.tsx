@@ -28,7 +28,6 @@ const config: DocsThemeConfig = {
     },
     head: function useHead() {
         const {title} = useConfig()
-        const {route} = useRouter()
 
         return (
             <>
@@ -86,7 +85,7 @@ const config: DocsThemeConfig = {
             }
             return <>{title}</>
         },
-        defaultMenuCollapseLevel: 1,
+        defaultMenuCollapseLevel: 0,
         toggleButton: true
     },
     footer: {
