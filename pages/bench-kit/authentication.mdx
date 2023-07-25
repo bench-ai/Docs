@@ -1,0 +1,29 @@
+# Bench Kit Authentication
+
+## Sync Your Project to Bench AI
+
+Now that you have Bench Kit installed on your code base, let's connect your code to your project on the [website!](https://bench-ai.com)
+
+All code intended to migrate must be written inside the project.
+
+A project must have the three main features: <b>models</b>, <b>dataloaders</b>, and <b>training scripts</b>.
+
+### Command Parameters
+The start-project command takes in two parameters: <b>project-id</b> and <b>api-key</b>
+
+import { Callout } from 'nextra/components'
+
+<Callout>
+    <b>Project IDs</b> can be found on the banner of you project's information page. It can also be found in your project's settings.
+</Callout>
+
+<Callout>
+    <b>API Keys</b> are generated when you first create your project and only shown once. If you wish to reset it, go to your project settings to do so.
+</Callout>
+
+### Run Command
+
+Run the following command in the root directory to connect your project and sync:
+```bash filename="> Terminal" copy
+bench-kit start-project <project-id> <api-key>
+```
