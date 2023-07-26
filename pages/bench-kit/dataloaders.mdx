@@ -1,3 +1,17 @@
 # Bench Kit Dataloaders
 
+After starting a project you should see a Datasets folder with a ProjectDatasets file.
 
+## Migrate your Data to the Cloud
+
+After you have completed the setup of your dataloader, run the command below to start the data migration:
+
+```bash filename="> Terminal" copy
+python manage.py migrate-data
+```
+
+If you'd like to migrate a specific dataset, run the command below:
+
+```bash filename="> Terminal" copy
+python manage.py migrate-data <dataset-name>
+```
