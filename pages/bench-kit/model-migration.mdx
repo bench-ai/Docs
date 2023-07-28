@@ -1,0 +1,16 @@
+# Bench Kit Model Migration
+
+## Cloud Migration
+
+After you have completed the setup of your dataloader and train script, run the command below to start the migration:
+
+```bash filename="> Terminal" copy
+python manage.py migrate-code
+```
+
+If you want upload your model as a different version, give it a unique number to start a migration as a new version:
+
+```bash filename="> Terminal" copy
+python manage.py migrate-code <version: int>
+```
+

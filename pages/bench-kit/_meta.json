@@ -1,5 +1,7 @@
 {
   "installation": "",
   "authentication": "",
-  "dataloaders": ""
+  "dataloaders": "",
+  "train-script": "",
+  "model-migration": ""
 }
