@@ -1,25 +1,31 @@
 # Bench Kit Authentication
 
-## Sync Your Project to Bench AI
+<video controls loop muted autoPlay>
+  <source src="/assets/docs/authentication/project_creation.mp4" type="video/mp4" />
+  Your browser does not support the video tag.
+</video>
 
-Now that you have Bench Kit installed on your code base, let's connect your code to your project on the [website!](https://bench-ai.com)
+---
+##  Create a project
+Create a Project on the [Bench AI ↗](https://bench-ai.com) site.
 
-All code intended to migrate must be written inside the project.
+### Project Creation
+Start off by clicking `new` on your dashboard. Next enter a name, description, and select a type for your project
 
-A project must have the three main features: <b>models</b>, <b>dataloaders</b>, and <b>training scripts</b>.
+![Project Page](/assets/docs/authentication/project_page.png)
 
-### Command Parameters
-The start-project command takes in two parameters: <b>project-id</b> and <b>api-key</b>
 
-import { Callout } from 'nextra/components'
+### Api-Key
+Create your project and copy your `api-key`. You will need it for authentication
 
-<Callout>
-    <b>Project IDs</b> can be found on the banner of you project's information page. It can also be found in your project's settings.
-</Callout>
+![api key](/assets/docs/authentication/api-key.png)
 
-<Callout>
-    <b>API Keys</b> are generated when you first create your project and only shown once. If you wish to reset it, go to your project settings to do so.
-</Callout>
+
+---
+
+## Sync Your Project
+
+After installing `bench-kit` we can begin connecting your codebase to your Bench AI project
 
 ### Run Command
 
@@ -27,3 +33,43 @@ Run the following command in the root directory to connect your project and sync
 ```bash filename="> Terminal" copy
 bench-kit start-project <project-id> <api-key>
 ```
+import { Callout } from 'nextra/components'
+
+<Callout>
+    <b>Project IDs</b> can be found on the banner of you project's information page. It can also be found in your project's settings.
+    ![Project Page](/assets/docs/authentication/banner.png)
+</Callout>
+
+<Callout>
+    <b>API Keys</b> are generated when you first create your project. If you wish to reset it, go to your project settings to do so.
+    <video controls loop muted autoPlay>
+        <source src="/assets/docs/authentication/reset-api-key.mp4" type="video/mp4" />
+        Your browser does not support the video tag.
+    </video>
+</Callout>
+
+### Directory Structure
+Upon starting your project you will notice this directory structure
+
+```plaintext
+|-- Datasets
+|   |-- __init__.py
+|   |-- ProjectDatasets.py
+|
+|-- Models
+|   |-- __init__.py
+|   |-- ProjectModels.py
+|
+|-- dependencies.txt
+|-- manage.py
+|-- TrainScript.py
+```
+
+- In the `Datasets` directory you will add your datasets and dataloaders
+- In the `Models` directory you will add files related to your model
+- You will add your training process to the `TrainScript.py` file
+- You will add additional dependencies besides `pytorch` and `bench-kit` in the `dependencies.txt` file
+- The `manage.py` will never be edited and will be used to make migrations to the cloud.
+
+All this will be covered more in depth in the following sections
+

@@ -2,13 +2,22 @@
 
 Requirements:
 - [Bench AI Account ↗](https://bench-ai.com/signup)
-- [Python 3.10 ↗](https://www.python.org/downloads/) or later
-- [PyTorch ↗](https://pytorch.org/docs/stable/index.html) is supported
-- macOS, Windows (including WSL), and Linux are supported.
+- [Python](https://www.python.org/downloads/) >= 3.10
 
-## Automatic Installation
+## Installing from PyPI
 
-We recommend creating a new Bench AI project using `pip`, which links everything automatically for you. To install run:
+import { Callout } from 'nextra/components'
+
+<b>bench-kit</b> can be installed via PyPI
+
+<Callout>
+    Currently only [PyTorch ↗](https://pytorch.org/get-started/locally/) >= 2.0.0 is supported
+</Callout>
+
+<Callout>
+    We support macOS, Windows (including WSL), and Linux
+</Callout>
+
 ```bash filename="> Terminal" copy
 pip install git+https://github.com/Bench-ai/BenchKit.git
 ```
