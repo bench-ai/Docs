@@ -1,0 +1,470 @@
+# FileSaver
+---
+## Preface
+
+`FileSaver`'s are an essential part of the chunking process. A `FileSaver` lets bench-kit know what kind of data you wish to
+transport and how to save it. To do this a certain pipeline of operations is called:
+
+1) `FileSaver` needs to be initialized with some data structure to hold data
+2) `FileSaver` needs to be initialized with a name for the file it will be holding
+3) As we iterate over data the `FileSaver` needs to append data to the data structure
+4) The `FileSaver` needs to write that data to a file
+5) The `FileSaver` needs to reset itself, so it can write to a new file
+6) When needed the `FileSaver` should be able to load the saved data
+
+## TextFile Example
+
+Let's see how a FileSaver is implemented using the `TextFile` class
+
+### `__init__`
+```python filename="FileSaver.py" copy
+from BenchKit.Data.FileSaver import BaseFile
+
+class TextFile(BaseFile):
+
+    def __init__(self,
+                 line_list: list | None = None):
+        super().__init__()
+        self._file_name = super().file_name + "-text.txt"
+        self._line_list = line_list if line_list else []
+```
+
+We start off by inheriting from BaseFile. BaseFile ensures that we implement all required methods,
+and is the backbone for many of them. Here we follow steps 1 and 2 of the pipeline. We start off by making a super call
+`file_name` since the value returned is guaranteed to be a structured unique name. Then we add the appropriate annotation to the end.
+
+After this we set the datastructure we wish to use. In this case we will be storing all the strings that come in, into a
+list.
+
+### `append`
+```python filename="FileSaver.py" copy
+from BenchKit.Data.FileSaver import BaseFile
+
+class TextFile(BaseFile):
+    def append(self, line: str):
+        if not line.endswith("\n"):
+            line += "\n"
+
+        self._line_list.append(line)
+```
+
+Here in the append method you simply append your data to your datastructure.
+
+### `save`
+```python filename="FileSaver.py" copy
+from BenchKit.Data.FileSaver import BaseFile
+
+class TextFile(BaseFile):
+    def save(self) -> tuple[str, str]:
+        with open(self.save_path, "w") as file:
+            file.writelines(self._line_list)
+
+        return self.file_name, "textfile"
+```
+In the save method you must save your file to the `self.save_path` instance variable (this is set for you).
+You must then return the name of your file, along with a unique tag that represents this `FileSaver`. The tag
+is used to load the data with the same `FileSaver`.
+
+### `load`
+```python filename="FileSaver.py" copy
+from BenchKit.Data.FileSaver import BaseFile
+
+class TextFile(BaseFile):
+    @classmethod
+    def load(cls, save_path: str):
+        with open(save_path, "r") as file:
+            lines = file.readlines()
+
+        return cls(line_list=lines)
+```
+The `load` method is a class method that takes in a save_path and returns an instance of the class
+with the data structure loaded.
+
+### `__call__`
+```python filename="FileSaver.py" copy
+from BenchKit.Data.FileSaver import BaseFile
+
+class TextFile(BaseFile):
+    def __call__(self, idx, *args, **kwargs) -> str:
+        return self._line_list[idx]
+```
+
+`__call__` is intended to be used with a loaded instance, it takes an index value and returns the corresponding item
+in the data structure
+
+### `reset`
+```python filename="FileSaver.py" copy
+from BenchKit.Data.FileSaver import BaseFile
+
+class TextFile(BaseFile):
+    def reset(self):
+        super().reset()
+        self._file_name = super().file_name + "-text.txt"
+        self._line_list = []
+```
+
+`bench-kit` needs a way to write to a new file once one is full. That is what the `reset` method does, it changes the file
+being written too, and resets the data structure (along with other essential values for your instance). Here we make a super call
+to reset. We then a reset our file_name and data structure.
+
+### Full Code
+
+```python filename="FileSaver.py" copy
+from BenchKit.Data.FileSaver import BaseFile
+
+class TextFile(BaseFile):
+
+    def __init__(self,
+                 line_list: list | None = None):
+        super().__init__()
+        self._file_name = super().file_name + "-text.txt"
+        self._line_list = line_list if line_list else []
+
+    def save(self) -> tuple[str, str]:
+        with open(self.save_path, "w") as file:
+            file.writelines(self._line_list)
+
+        return self.file_name, "textfile"
+
+    def reset(self):
+        super().reset()
+        self._file_name = super().file_name + "-text.txt"
+        self._line_list = []
+
+    def append(self, line: str):
+        if not line.endswith("\n"):
+            line += "\n"
+
+        self._line_list.append(line)
+
+    @classmethod
+    def load(cls, save_path: str):
+        with open(save_path, "r") as file:
+            lines = file.readlines()
+
+        return cls(line_list=lines)
+
+    def __call__(self, idx, *args, **kwargs) -> str:
+        return self._line_list[idx]
+```
+
+## Custom CsvFile Example
+Though `bench-kit` provides file types to fit almost any need, there may be a case where you wish to make your own. Maybe instead
+of splitting your csv columns into different file types you wish to simply save the csv itself. In this example we will show you how
+to do so.
+
+### `__init__`
+```python filename="FileSaver.py" copy
+from BenchKit.Data.FileSaver import BaseFile
+import pandas as pd
+
+class CsvFile(BaseFile):
+
+    def __init__(self):
+        super().__init__()
+        self._file_name = super().file_name + "-csv.csv"
+        self._df: pd.DataFrame | None = None
+```
+
+This `FileSaver` will save data in a csv format. The data structure we will use to achieve this is a pandas dataframe.
+We will also give the file a csv annotation.
+
+### `append`
+```python filename="FileSaver.py" copy
+from BenchKit.Data.FileSaver import BaseFile
+import pandas as pd
+
+class CsvFile(BaseFile):
+
+    def append(self, df: pd.DataFrame) -> None:
+        if self._df:
+            self._df = pd.concat([self._df, df])
+        else:
+            self._df = df
+
+        self._df = self._df.reset_index(drop=True)
+```
+We are going to assume the data will come into the `FileSaver` as rows in dataframe format. So in the append method we
+will concatenate this dataframe to our own.
+
+### `save`
+```python filename="FileSaver.py" copy
+from BenchKit.Data.FileSaver import BaseFile
+import pandas as pd
+
+class CsvFile(BaseFile):
+
+    def save(self) -> tuple[str, str]:
+        self._df.to_csv(self.save_path, index=False)
+
+        return self.file_name, "csv"
+```
+In the save method we will write the dataframe to disk as a csv using the `save_path` instance variable. We will then return the
+csv tag
+
+### `reset`
+```python filename="FileSaver.py" copy
+from BenchKit.Data.FileSaver import BaseFile
+import pandas as pd
+
+class CsvFile(BaseFile):
+
+    def reset(self):
+        super().reset()
+        self._file_name = super().file_name + "-csv.csv"
+        self._df: pd.DataFrame | None = None
+```
+In the reset method, we make a super call to the reset method, reset the file_name, and reset the dataframe.
+
+### `load`
+```python filename="FileSaver.py" copy
+from BenchKit.Data.FileSaver import BaseFile
+import pandas as pd
+
+class CsvFile(BaseFile):
+
+    @classmethod
+    def load(cls, save_path: str):
+        df = pd.read_csv(save_path)
+        csv_instance = cls()
+        csv_instance.df = df
+        return csv_instance
+```
+
+In the `load` method we load the dataframe from the provided path. Create a new `CsvFile` instance and load it with the
+df. We then return that instance.
+
+### `__call__`
+```python filename="FileSaver.py" copy
+from BenchKit.Data.FileSaver import BaseFile
+import pandas as pd
+
+class CsvFile(BaseFile):
+
+    def __call__(self, idx, *args, **kwargs) -> pd.DataFrame:
+        return self._df.iloc[[idx]]
+```
+
+Here we return the row using the index to identify which one to return.
+
+### Full Code
+```python filename="FileSaver.py" copy
+from BenchKit.Data.FileSaver import BaseFile
+import pandas as pd
+
+class CsvFile(BaseFile):
+
+    def __init__(self):
+        super().__init__()
+        self._file_name = super().file_name + "-csv.csv"
+        self._df: pd.DataFrame | None = None
+
+    @property
+    def df(self):
+        return self._df
+
+    @df.setter
+    def df(self, df: pd.DataFrame):
+        self._df = df
+
+    def append(self, df: pd.DataFrame) -> None:
+        if self._df:
+            self._df = pd.concat([self._df, df])
+        else:
+            self._df = df
+
+        self._df = self._df.reset_index(drop=True)
+
+    def save(self) -> tuple[str, str]:
+        self._df.to_csv(self.save_path, index=False)
+
+        return self.file_name, "csv"
+
+    def reset(self):
+        super().reset()
+        self._file_name = super().file_name + "-csv.csv"
+        self._df: pd.DataFrame | None = None
+
+    @classmethod
+    def load(cls, save_path: str):
+        df = pd.read_csv(save_path)
+        csv_instance = cls()
+        csv_instance.df = df
+        return csv_instance
+
+    def __call__(self, idx, *args, **kwargs) -> pd.DataFrame:
+        return self._df.iloc[[idx]]
+```
+
+### `ProcessorDataset`
+Now that our FileSaver is ready we can use it in our Processor class
+
+```python filename="ProjectDatasets.py" copy
+from BenchKit.Data.Datasets import ProcessorDataset
+class DataUploader(ProcessorDataset):
+
+    def __init__(self,
+                 data_path):
+        super().__init__()
+
+        self.df = pd.read_csv(data_path)
+        self.csv_file = CsvFile()
+
+    def _get_savers(self) -> tuple[BaseFile, ...]:
+        return (self.csv_file,)
+
+    def _get_data(self,
+                  idx: int):
+        self.csv_file.append(self.df.iloc[[idx]])
+
+    def __len__(self):
+        return len(self.df)
+```
+
+### `IterableChunk`
+The final change you have to make is that you must override one additional method in your Chunker
+
+```python filename="ProjectDatasets.py" copy
+from BenchKit.Data.Datasets import IterableChunk
+
+class CsvChunker(IterableChunk):
+    @staticmethod
+    def file_converter(tag: str,
+                       file_path: str) -> BaseFile:
+
+        if tag == "csv":
+            return CsvFile.load(file_path)
+        else:
+            super().file_converter(tag, file_path)
+```
+
+The `file_converter` method tells bench-kit which `FileSaver` to use when given a tag. In this case we make sure to use our
+custom `CsvSaver` when given the `csv` tag. We use the super method in every other case.
+
+## FileSaver's
+
+### `BaseFile`
+```python filename="FileSaver.py" copy
+from BenchKit.Data.FileSaver import BaseFile
+base_instance = BaseFile()
+```
+Every FileSaver inherits from `BaseFile`
+
+### `TextFile`
+
+kwargs:
+- line_list: str | None
+```python filename="FileSaver.py" copy
+from BenchKit.Data.FileSaver import TextFile
+text_instance = TextFile(line_list=None)
+
+text_instance.append("I ❤️ Bench AI!!!")
+
+text_instance = TextFile.load("path/to/my/file.txt")
+
+```
+`TextFile` takes in an optional value of `line_list`, this value should be left as None
+
+### `BooleanFile`
+
+kwargs:
+- line_list: str | None
+
+```python filename="FileSaver.py" copy
+from BenchKit.Data.FileSaver import BooleanFile
+bool_instance = BooleanFile(line_list=None)
+
+bool_instance.append(True)
+
+bool_instance = BooleanFile.load("path/to/my/file.txt")
+
+```
+`BooleanFile` takes in an optional value of `line_list`, this value should be left as None. Internally this method calls
+`TextFile`
+
+### `NumpyFile`
+args:
+- enforce_shape: bool
+
+kwargs:
+- shape: tuple[int, ...] | None
+
+```python filename="FileSaver.py" copy
+from BenchKit.Data.FileSaver import NumpyFile
+import numpy as np
+np_instance1 = NumpyFile(True, shape=(4, 10)) # Enforced Shape
+np_instance1.append(np.ones((4, 10)))
+
+np_instance2 = NumpyFile(False) # Dynamic Shape
+np_instance2.append(np.ones((100, 10)))
+
+np_instance1 = NumpyFile.load("path/to/my/file.npy", True) # loading an enforced shape array
+np_instance2 = NumpyFile.load("path/to/my/file.npz", False) # loading a dynamically shaped array
+
+```
+`NumpyFile` takes in an argument `enforce_shape`. Set this value to true if all the arrays you will be saving will be the
+same size, false if otherwise.
+If `enforce_shape` is true the `shape` kwarg must be passed as well.
+If you are enforcing a shape the file will be npy else it will be a npz file.
+When loading an instance provide the path and whether you enforced a shape.
+
+### `TorchFile`
+args:
+- shape: tuple[int, ...]
+
+```python filename="FileSaver.py" copy
+from BenchKit.Data.FileSaver import TorchFile
+import torch
+ten_instance = TorchFile((4, 10))
+
+x = torch.ones((4, 10))
+
+ten_instance.append(x)
+
+ten_instance = TorchFile.load("path/to/my/file.pt")
+
+```
+`TorchFile` takes in an argument `shape` which will be the shape of all tensors passed in.
+
+`JsonFile` saves all valid json data into a json file
+
+### `JsonFile`
+
+```python filename="FileSaver.py" copy
+from BenchKit.Data.FileSaver import JsonFile
+j_instance = JsonFile()
+
+j_instance.append({"my_list": [1, 2, 3, 4, 5]})
+
+j_instance = JsonFile.load("path/to/my/file.json")
+
+```
+`JsonFile` saves all valid json data into a json file
+
+### `NumericFile`
+
+```python filename="FileSaver.py" copy
+from BenchKit.Data.FileSaver import NumericFile
+num_instance = NumericFile()
+
+num_instance.append(10)
+
+num_instance = NumericFile.load("path/to/my/file.pkl")
+
+```
+`NumericFile` saves all valid numeric data (int, pickle, long) as a pkl
+
+### `RawFile`
+
+```python filename="FileSaver.py" copy
+from BenchKit.Data.FileSaver import RawFile
+raw_instance = RawFile()
+
+raw_instance.append("path/to/my/file")
+
+raw_instance = RawFile.load("path/to/my/dir")
+
+```
+`RawFile` copies all files into the appropriate dir to be zipped
+
+

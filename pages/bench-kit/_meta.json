@@ -1,7 +1,4 @@
 {
-  "installation": "",
-  "authentication": "",
-  "dataloaders": "",
-  "train-script": "",
-  "model-migration": ""
+  "API": "",
+  "CLI": ""
 }
