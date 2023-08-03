@@ -1,140 +1,19 @@
-# Bench Kit Train Script
+# Train Script and Code Migration
 
-## Create a TrainScript
+Bench AI offers users top of the line servers, in various different configurations.
+Users can train their models on up to 8 gpu's, however to fully utilize these configurations requires the use of
+distributed training libraries.
 
-To facilitate multi-gpu training changes have to be made to your code. To achieve this libraries are often incorporated, the library we use is [Hugging Face Accelerate ↗](https://huggingface.co/docs/accelerate/index)
+## Hugging Face Accelerate
 
-A more intricate explanation on how to use the library can be found on their site, but we will give you a basic breakdown as well.
+`bench-kit` directly integrates with Hugging Face Accelerate allowing users to train their models on distributed systems
+without needing to change most of their code.
 
-First you need to get a dataset to achieve this, to do this call the get dataset method
+Hugging Face Accelerate provides integrations with various model trackers, allowing users to use their favorite
+trackers such as TensorBoard right out of the box. Hugging Face Accelerate also provides in depth features that allows users to optimize their distributed training pipeline. All of which can be found in
+the [Accelerate docs ↗](https://huggingface.co/docs/accelerate/index).
 
-```python filename="TrainScript.py" copy
-from BenchKit.Data.Helpers import get_dataset
-
-train_dataset: DataLoader = get_dataset(CatDogChunk,
-                                            True,
-                                            "train",
-                                            tracker_config["bs"],
-                                            2,
-                                            True)
-
-
-val_dataset: DataLoader = get_dataset(CatDogChunk,
-                                      True,
-                                      "val",
-                                      tracker_config["bs"],
-                                      2,
-                                      False)
-```
-
-Then just like regular pytorch declare your model, loss_fn, optim. To get these pieces of data ready for distributed training, you have to use the accelerate prepare method.
-
-```python filename="TrainScript.py" copy
-from accelerate import Accelerator
-from BenchKit.Train.Helpers import get_accelerator
-
-model = CDResNet(64)
-loss_fn = nn.BCELoss()
-optim = opt.Adam(params=model.parameters(), lr=tracker_config["lr"])
-
-acc: Accelerator = get_accelerator()
-model, loss_fn, optim, train_dataset, val_dataset = acc.prepare(model,
-                                                                loss_fn,
-                                                                optim,
-                                                                train_dataset,
-                                                                val_dataset)
-```
-
-From here train and validate your model
-
-```python filename="TrainScript.py" copy
-for _ in range(tracker_config["epochs"]):
-    train_one_epoch(acc, train_dataset, model, optim, loss_fn)
-
-    validate_one_epoch(acc, val_dataset, model, val_length)
-```
-
-Here is the train method, the main things that need to be changed is that instead of using a torch device object one would use an accelerator.device object. You would also want to call the wipe_temp method to remove any lingering files. If you are using a multi gpu setup, it is recommended to run accelerate.gather this method will combine all the losses from all gpu's for one efficient calculation.
-
-```python filename="TrainScript.py" copy
-def train_one_epoch(accelerate: Accelerator,
-                    train_dl: DataLoader,
-                    model,
-                    optim,
-                    loss_fn):
-
-    model.train()
-    total_loss = 0
-    count = 0
-
-    for batch in train_dl:
-
-        optim.zero_grad()
-
-        targets, inputs = batch
-        outputs = model(inputs)
-
-        targets = targets.type(torch.FloatTensor)
-        targets = targets.to(accelerate.device)
-
-        loss = loss_fn(outputs, targets)
-        accelerate.backward(loss)
-        optim.step()
-
-        all_loss, outputs = accelerate.gather((loss, outputs))
-        total_loss += torch.reshape(all_loss, (-1,)).item()
-        count += torch.tensor(outputs.size()[0], device=accelerate.device)
-
-    print(total_loss / count)
-    wipe_temp(accelerate)
-```
-
-Same process for the validation method
-
-```python filename="TrainScript.py" copy
-def validate_one_epoch(accelerate: Accelerator,
-                       test_dl: DataLoader,
-                       model,
-                       length):
-    model.eval()
-    total_correct = 0
-    total_length = 0
-    for batch in tqdm(test_dl,
-                      colour="blue",
-                      total=length + 1,
-                      disable=not accelerate.is_local_main_process):
-
-        accelerate.free_memory()
-        targets, inputs = batch
-        outputs = model(inputs)
-        targets = targets.type(torch.FloatTensor)
-        targets = targets.to(accelerate.device)
-
-        class_count, length = get_class_loss(accelerate, outputs, targets)
-        class_count, length = accelerate.gather((class_count, length))
-
-        total_length += torch.sum(torch.reshape(length, (-1,)))
-        total_correct += torch.sum(torch.reshape(class_count, (-1,)))
-
-    val_loss: torch.Tensor = total_correct / total_length
-    wipe_temp(accelerate)
-```
-
-### Simple messaging
-
-To send logs to your Experiment dashboard, you will need to instantiate a tracker with your accelerator
-
-```python filename="TrainScript.py" copy
-tracker_config = {
-        "epochs": 10,
-        "bs": 16,
-        "lr": 1e-2
-    }
-
-
-tracker = BenchAccelerateTracker("trial tun",tracker_config["epochs"])
-acc: Accelerator = get_accelerator(log_with=tracker)
-acc.init_trackers("my_project", config=tracker_config)
-```
+For the rest of the section I will show the essentials of what you need to do, to turn your regular Pytorch training script into a
+Accelerate compatible script.
 
 
