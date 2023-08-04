@@ -1,10 +1,47 @@
 # Train Script and Code Migration
 
+You are now ready to start writing code to begin training your model. Start off by writing all training related scripts in
+the `TrainScript.py` file.
+
+## Dataloaders
+To train your model you will need a Dataloader that will take in your `IterableChunk` dataset. This dataloader will then apply batching,
+and tensor conversions to your data. In regular pytorch you would pass in your dataset into a Dataloader, and that would automatically
+perform the right operations. In bench-kit since we need to sync your dataloader with a dataset in the cloud you will need to call a different method, `get_dataloader`.
+`get_dataloader` takes in the name of IterableChunk class and the name of the dataset you uploaded. It also has two kwargs, the `batch_size` and `num_workers`
+
+### `get_dataloader`
+```python filename="TrainScript.py" copy
+from BenchKit.Data.Helpers import get_dataloader
+from Datasets.ProjectDatasets import MyChunker
+train_chunker = MyChunker()
+
+train_dataset: DataLoader = get_dataloader(train_chunker,"my_ds")
+```
+The dataset name is the same one you used to upload the data which can be found in `Datasets/ProjectDatasets.py`
+```python filename="ProjectDatasets.py" copy
+def main():
+    """
+    This method returns all the necessary components to build your dataset
+    You will return a list of tuples, each tuple represents a different dataset
+    """
+
+    return [
+        (MyProcessor, MyChunker, "my_ds", [True], {}),
+    ]
+
+```
+It can also be found at the bottom of your experiment page
+
+<video controls loop muted autoPlay>
+  <source src="https://sofadocsbucket.s3.us-west-2.amazonaws.com/assets/Tutorials/train-script/DatasetAnalytics.mp4" type="video/mp4" />
+  Your browser does not support the video tag.
+</video>
+
+## Hugging Face Accelerate
+
 Bench AI offers users top of the line servers, in various different configurations.
 Users can train their models on up to 8 gpu's, however to fully utilize these configurations requires the use of
 distributed training libraries.
-
-## Hugging Face Accelerate
 
 `bench-kit` directly integrates with Hugging Face Accelerate allowing users to train their models on distributed systems
 without needing to change most of their code.
@@ -13,7 +50,271 @@ Hugging Face Accelerate provides integrations with various model trackers, allow
 trackers such as TensorBoard right out of the box. Hugging Face Accelerate also provides in depth features that allows users to optimize their distributed training pipeline. All of which can be found in
 the [Accelerate docs ↗](https://huggingface.co/docs/accelerate/index).
 
-For the rest of the section I will show the essentials of what you need to do, to turn your regular Pytorch training script into a
-Accelerate compatible script.
+For the rest of the section the essentials of what's needed to turn your regular Pytorch training script into an
+Accelerate compatible script will be displayed.
+
+### `Accelerator`
+The Accelerator is the main focal point for the Hugging Face accelerate API. It does all the heavy lifting of gpu synchronization
+and distributed operations for the user.
+
+#### `Prepare`
+Any objects that are to be used in the training process should be passed into the `Accelerator.prepare()` method, this signals
+to the Accelerator API that these objects will be directly used in the training process.
+
+Objects that are generally passed into this method are:
+- dataloaders
+- models
+- optimizers
+- schedulers
+
+```python filename="TrainScript.py" copy
+from accelerate import Accelerator
+import torch.nn as nn
+import torch.optim as opt
+from Models.ProjectModels import MyModel
+from BenchKit.Data.Helpers import get_dataloader
+from Datasets.ProjectDatasets import MyChunker
+train_chunker = MyChunker()
+
+loss_fn = nn.BCELoss()
+model = MyModel(64)
+optim = opt.Adam(params=model.parameters(), lr=1e-2)
+
+train_dataset: DataLoader = get_dataloader(train_chunker,"my_ds")
+acc = Accelerator()
+loss_fn, model, optim, train_dataset = acc.prepare(loss_fn, model, optim, train_dataset)
+```
+
+While manually calling and creating an accelerator is fine we recommend using our tracker methods to get one.
+
+#### Tracker
+
+Trackers are extensions accelerate offers to integrate your code directly with state-of-the-art tracking software,
+such as CometML, Wandb, and Tensorboard.
+
+Bench AI also offers a progress tracking system which can be seen on the experiment page:
+
+![Experiment Progress](https://sofadocsbucket.s3.us-west-2.amazonaws.com/assets/Tutorials/train-script/experiments-progress.png)
+
+`bench-kit` combines Accelerates tracking integrations with Bench AI's online progress tracking system.
+
+Our methods will return a tracker to you preconfigured with whichever system you wish, which will also update the site.
+```python filename="TrainScript.py" copy
+from BenchKit.Tracking.Tracker import get_tensorboard_tracker
+import torch.nn as nn
+import torch.optim as opt
+from Models.ProjectModels import MyModel
+from BenchKit.Data.Helpers import get_dataloader
+from Datasets.ProjectDatasets import MyChunker
+train_chunker = MyChunker()
+
+loss_fn = nn.BCELoss()
+model = MyModel(64)
+optim = opt.Adam(params=model.parameters(), lr=1e-2)
+
+tracker_config = {
+        "epochs": 10,
+        "bs": 16,
+        "lr": 1e-2
+    }
+
+train_dataset: DataLoader = get_dataloader(train_chunker, "my_ds")
+acc, train_dataset, val_dataset, model, loss_fn, optim = get_tensorboard_tracker(tracker_config,
+                                                                                 train_dataset,
+                                                                                 val_dataset, model,
+                                                                                 loss_fn, optim)
+```
+
+In this example we use the tensorboard tracker. It takes in all the values a regular accelerator takes in, along with
+a config dict, used to label your runs for comparison in TensorBoard. The Prepared values are returned along with the
+accelerator itself.
+
+##### `log`
+To log using your tracker call `.log`
+```python filename="TrainScript.py" copy
+from BenchKit.Tracking.Tracker import get_tensorboard_tracker
+
+acc, train_dataset, val_dataset, model, loss_fn, optim = get_tensorboard_tracker(tracker_config,
+                                                                                 train_dataset,
+                                                                                 val_dataset, model,
+                                                                                 loss_fn, optim)
+
+acc.log({"val_loss": 1}, step=1)
+```
+For the tensorboard tracker the log function takes in two parameters. The first a dictionary with a key representing the name of the tracked metric,
+and a value representing the metric itself. The second a kwarg called `step` representing where in the training cycle this metric takes place. In most cases the
+step should represent the current epoch you are at. Doing this you will be able to log to tensorboard as you normally would while also updating your progress
+on the Bench AI site
+
+#### `backward`
+
+Instead of calling `.backwards` on your loss value call it on your accelerator
+```python filename="TrainScript.py" copy
+from BenchKit.Tracking.Tracker import get_tensorboard_tracker
+import torch
+acc, train_dataset, val_dataset, model, loss_fn, optim = get_tensorboard_tracker(tracker_config,
+                                                                                 train_dataset,
+                                                                                 val_dataset, model,
+                                                                                 loss_fn, optim)
+
+loss = loss_fn(torch.Tensor([10]), torch.Tensor([100]))
+acc.backwards(loss)
+```
+
+#### `device`
+
+Hugging Face Accelerate manages device placement for the user as long as all relevant values have been passed into
+the prepare function. However, there are some cases where you will create a Tensor that needs to be fed into your
+model, and it won't initially be on the right device.
+
+For example
+```python filename="TrainScript.py" copy
+from BenchKit.Tracking.Tracker import get_tensorboard_tracker
+import torch
+acc, train_dataset, val_dataset, model, loss_fn, optim = get_tensorboard_tracker(tracker_config,
+                                                                                 train_dataset,
+                                                                                 val_dataset, model,
+                                                                                 loss_fn, optim)
+
+for batch in train_dataset:
+    target, inp = batch # on device
+    targets = targets.type(torch.FloatTensor) # returns new tensor on CPU
+```
+
+In cases like this where your tensor is no longer on the right GPU, transport it back using `accelerate.device`
+```python filename="TrainScript.py" copy
+from BenchKit.Tracking.Tracker import get_tensorboard_tracker
+import torch
+acc, train_dataset, val_dataset, model, loss_fn, optim = get_tensorboard_tracker(tracker_config,
+                                                                                 train_dataset,
+                                                                                 val_dataset, model,
+                                                                                 loss_fn, optim)
+
+for batch in train_dataset:
+    target, inp = batch # on device
+    targets = targets.type(torch.FloatTensor) # returns new tensor on CPU
+    targets = targets.to(acc.device) # puts tensor on the right GPU
+```
+
+#### Multi GPU Considerations
+
+When training using multiple GPUs each GPU is treated as an individual Process. Meaning if you are using an 8 GPU server
+there will be 8 processes of your model training on your server.
+
+This means every line of code in your training script will effectively run `N` times, where `N` is the number of processes. In most cases this is ok
+but for some operations it is not preferred.
+
+##### `print`
+When printing in most cases you may want to see a message once. To have a print statement not repeat `N` times use `Accelerate.print()`
+```python filename="TrainScript.py" copy
+from BenchKit.Tracking.Tracker import get_tensorboard_tracker
+acc, train_dataset, val_dataset, model, loss_fn, optim = get_tensorboard_tracker(tracker_config,
+                                                                                 train_dataset,
+                                                                                 val_dataset, model,
+                                                                                 loss_fn, optim)
+acc.print("I ❤️ Bench AI!!!")
+```
+
+##### `is_local_main_process`
+In general if you want an operation to only take place on one process you can use the command `Accelerate.is_local_main_process`. This will return a
+boolean value depending on if the statement is true.
+
+```python filename="TrainScript.py" copy
+from BenchKit.Tracking.Tracker import get_tensorboard_tracker
+acc, train_dataset, val_dataset, model, loss_fn, optim = get_tensorboard_tracker(tracker_config,
+                                                                                 train_dataset,
+                                                                                 val_dataset, model,
+                                                                                 loss_fn, optim)
+
+if acc.is_local_main_process:
+    acc.print("I am the main")
+```
+
+`Accelerate.log` uses this condition under the hood to make sure a log isn't sent for each process.
+
+##### `gather_for_metrics`
+
+When logging loss you don't generally want to log per process. Instead, you will want to record the combined loss of all
+processes. In scenarios like this use the `accelerate.gather_for_metrics` method. This will synchronize all tensors on each
+process into one Tensor which can now easily be logged
+
+```python filename="TrainScript.py" copy
+from BenchKit.Tracking.Tracker import get_tensorboard_tracker
+import torch
+acc, train_dataset, val_dataset, model, loss_fn, optim = get_tensorboard_tracker(tracker_config,
+                                                                                 train_dataset,
+                                                                                 val_dataset, model,
+                                                                                 loss_fn, optim)
+
+for batch in train_dataset:
+    loss = loss_fn(torch.Tensor([10]), torch.Tensor([100]))
+    full_loss: torch.Tensor = acc.gather_for_metrics(loss)
+```
+
+#### `upload_model_checkpoint`
+Use `upload_model_checkpoint` when you want to save checkpoints of your model, this method takes in your `Accelerator`
+and saves all the objects you prepared with it.
+
+```python filename="TrainScript.py" copy
+from BenchKit.Tracking.Tracker import get_tensorboard_tracker
+
+acc, train_dataset, val_dataset, model, loss_fn, optim = get_tensorboard_tracker(tracker_config,
+                                                                                 train_dataset,
+                                                                                 val_dataset, model,
+                                                                                 loss_fn, optim)
+
+upload_model_checkpoint(acc, "test-checkpoint")
+```
+
+## Migrate Code
+Once you are ready to train your model, you can begin the code migration process. Migrating code saves your code to the cloud, so it can
+loaded on any server you want to train with.
+
+Run:
+```bash filename="> Terminal" copy
+python manage.py migrate-code
+```
+
+<video controls loop muted autoPlay>
+  <source src="https://sofadocsbucket.s3.us-west-2.amazonaws.com/assets/Tutorials/train-script/migrate-code.mp4" type="video/mp4" />
+  Your browser does not support the video tag.
+</video>
+
+This command migrates your code with a default version of `one`. This means that if you were to make changes to this code
+and were to migrate it, it would overwrite the previous version `one` code you had. All files and folders that were created
+with the `start-project` command will be migrated, files not in this category will be left as is.
+
+
+### Versioning
+
+Versioning becomes extremely useful, when you make changes to your models architecture, data, or training script.
+Through versioning you can run multiple experiments of different model versions
+and could compare the accuracy of each side by side.
+
+To migrate code with a specific version use this command instead:
+```bash filename="> Terminal" copy
+python manage.py migrate-code <version: int>
+```
+
+To see all your current versions run this command
+```bash filename="> Terminal" copy
+bench-kit show-vs
+```
+<video controls loop muted autoPlay>
+  <source src="https://sofadocsbucket.s3.us-west-2.amazonaws.com/assets/Tutorials/train-script/show-vs.mp4" type="video/mp4" />
+  Your browser does not support the video tag.
+</video>
+
+You can also see all the versions you have for a project by going to your projects experiment page
+
+<video controls loop muted autoPlay>
+  <source src="https://sofadocsbucket.s3.us-west-2.amazonaws.com/assets/Tutorials/train-script/Create+Experiment+Site.mp4" type="video/mp4" />
+  Your browser does not support the video tag.
+</video>
+
+
+
+
+
 
 
