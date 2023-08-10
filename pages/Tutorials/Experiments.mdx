@@ -1,1 +1,70 @@
-# Coming Soon
+import {Callout} from "nextra/components";
+
+# Experiments
+
+### Experiment Overview
+Experiments are what allow you to train your model on the cloud. Each experiment is correlated to one server on the cloud, and
+you can run multiple experiments at the same time, allowing for different model versions to be concurrently trained.
+This parallel training approach allows for faster model comparison for performance evaluation.
+
+### Creating an Experiment
+Prior to creating an experiment, ensure that your dataset and model was successfully migrated onto the cloud.
+
+To get started, navigate to your target project within your [Dashboard ↗](https://bench-ai.com/dashboards) and inside, click on "Train"
+<Callout>
+    <b>Note:</b> If you haven't already migrated your dataset and model to the cloud via BenchKit, you'll instead be taken
+    to a page instructing you on how to do so. Complete this step before proceeding.
+    ![Get Started Page Image](https://sofadocsbucket.s3.us-west-2.amazonaws.com/assets/Tutorials/experiments/get-started.png)
+</Callout>
+Next, click on "Create Experiment" and provide details for these fields:
+* <b>Experiment Name</b>
+* <b>Version</b> - Train a specific model iteration/version, see the section titled <b>Experiment Versions</b> below for more details.
+* <b>Server Type</b> - Determines the cloud server to train the model on. Each cloud server type has different
+hardware so it's up to you to determine which one best fits your needs.
+* <b>API Key</b> - Generated when you first made a project
+<Callout>
+    Every API Key is unique to their respective project so ensure that you use the correct API Key for each project.
+    If you forget your API Key, you can reset it in the project settings.
+</Callout>
+Click "Submit" and you are now training on the cloud!
+Once your experiment is done setting up, you'll see a new entry on the table. This table list out various information
+regarding your project such as server status, progress, creation/update/termination timestamps, and messages.
+<Callout>
+     Content displayed under the messages section is contingent on what you setup to be displayed in your codebase
+</Callout>
+<video controls loop muted autoPlay>
+        <source src="https://sofadocsbucket.s3.us-west-2.amazonaws.com/assets/Tutorials/experiments/creating-experiment.mp4" type="video/mp4" />
+        Your browser does not support the video tag.
+</video>
+
+## Experiment Versions
+When creating an experiment, you can select a specific iteration of your model's architecture. What makes
+Bench AI unique is that you can run multiple experiments concurrently, each with different versions.
+This is all done with just a couple clicks on our UI rather than having to go through the hassle of setting up training
+for each version or having to wait for each one to conclude training before starting the next training session.
+You can now quickly compare different model versions and identify which ones are more promising,
+thus improving development efficiency.
+
+You can train multiple model versions by simply creating multiple experiments and selecting a different version for each one.
+Don't have multiple versions? See here to set up versioning for your models [here ↗](https://docs.bench-ai.com/Tutorials/train-script#versioning)
+
+## Experiment Logs
+When you create an experiment, experiment logs are also generated along with it, these logs are the cloud server's
+terminal output, serving debugging and progress monitoring purposes.
+
+### Accessing Logs
+You can access your logs for a desired experiment by clicking on its row inside the experiments table.
+The logs will also automatically refresh periodically and will stop updating once the experiment has been
+terminated.
+
+Image example of an experiment log:
+![Experiments Log](https://sofadocsbucket.s3.us-west-2.amazonaws.com/assets/Tutorials/experiments/experiment-logs.png)
+
+## Terminating Experiments
+Upon experiment completion, an automated server termination occurs after a brief period as this prevents
+unnecessary charges for forgotten servers. You can also manually terminate your server(s) by selecting the experiment in
+the table and clicking "Terminate Servers" and this will forcibly stop the training session.
+<video controls loop muted autoPlay>
+        <source src="https://sofadocsbucket.s3.us-west-2.amazonaws.com/assets/Tutorials/experiments/deleting-experiment.mp4" type="video/mp4" />
+        Your browser does not support the video tag.
+</video>
