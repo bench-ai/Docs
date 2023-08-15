@@ -76,17 +76,13 @@ These are the currently implemented FileSaver's:
 
 import { Callout } from 'nextra/components'
 
-<Callout>
-    `_get_savers` requires data to be returned as a tuple
-</Callout>
-
 ```python filename="ProjectDatasets.py" copy
 from BenchKit.Data.Datasets import ProcessorDataset
 from BenchKit.Data.FileSaver import NumericFile
 
 class MyProcessorDataset(ProcessorDataset):
-    def get_savers(self):
-        return (self.nf1,)
+    def _get_savers(self):
+        return self.nf1
 ```
 
 #### `_get_data`
@@ -158,14 +154,14 @@ class MyProcessorDataset(ProcessorDataset):
         self.bf1.append(bool_data[idx])
 ```
 
-And the `get_savers` method returned the `NumFile` saver then the `BooleanFile` saver like such
+And the `_get_savers` method returned the `NumFile` saver then the `BooleanFile` saver like such
 
 ```python filename="ProjectDatasets.py" copy
 from BenchKit.Data.Datasets import IterableChunk
 from BenchKit.Data.FileSaver import NumericFile
 
 class MyChunker(IterableChunk):
-    def get_savers(self):
+    def _get_savers(self):
         return self.nf1, self.bf1
 ```
 
@@ -173,10 +169,6 @@ Then if I did not override `unpack_data` it would return `1` and `True`.
 
 However, in most cases you will want to perform transformations to your data before feeding it to your model. To acheive this
 override `unpack_data`, and apply transformations to the super call of the same method, returning the transformed data at the end.
-
-<Callout>
-    `unpack_data` requires data to be returned as a tuple
-</Callout>
 
 ```python filename="ProjectDatasets.py" copy
 from BenchKit.Data.Datasets import IterableChunk

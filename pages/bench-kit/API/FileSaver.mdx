@@ -328,8 +328,8 @@ The final change you have to make is that you must override one additional metho
 from BenchKit.Data.Datasets import IterableChunk
 
 class CsvChunker(IterableChunk):
-    @staticmethod
-    def file_converter(tag: str,
+    def file_converter(self,
+                       tag: str,
                        file_path: str) -> BaseFile:
 
         if tag == "csv":
