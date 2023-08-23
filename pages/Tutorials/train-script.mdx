@@ -3,39 +3,12 @@
 You are now ready to start writing code to begin training your model. Start off by writing all training related scripts in
 the `TrainScript.py` file.
 
-## Dataloaders
-To train your model you will need a Dataloader that will take in your `IterableChunk` dataset. This dataloader will then apply batching,
-and tensor conversions to your data. In regular pytorch you would pass in your dataset into a Dataloader, and that would automatically
-perform the right operations. In bench-kit since we need to sync your dataloader with a dataset in the cloud you will need to call a different method, `get_dataloader`.
-`get_dataloader` takes in the name of IterableChunk class and the name of the dataset you uploaded. It also has two kwargs, the `batch_size` and `num_workers`
+## Config
 
-### `get_dataloader`
-```python filename="TrainScript.py" copy
-from BenchKit.Data.Helpers import get_dataloader
-from Datasets.ProjectDatasets import MyChunker
-train_chunker = MyChunker()
-
-train_dataset: DataLoader = get_dataloader(train_chunker,"my_ds")
-```
-The dataset name is the same one you used to upload the data which can be found in `Datasets/ProjectDatasets.py`
-```python filename="ProjectDatasets.py" copy
-def main():
-    """
-    This method returns all the necessary components to build your dataset
-    You will return a list of tuples, each tuple represents a different dataset
-    """
-
-    return [
-        (MyProcessor, MyChunker, "my_ds", [True], {}),
-    ]
-
-```
-It can also be found at the bottom of your experiment page
-
-<video controls loop muted autoPlay>
-  <source src="https://sofadocsbucket.s3.us-west-2.amazonaws.com/assets/Tutorials/train-script/DatasetAnalytics.mp4" type="video/mp4" />
-  Your browser does not support the video tag.
-</video>
+A config isn't a special yaml file which a user has to declare rather it's a set of hyperparameters you wish to track with
+your model. These hyperparameters will be displayed for you on the Bench AI site, so you know exactly what parameters gave you
+those amazing results! In further examples you will see that configs will be passed in as dictionary's to accelerators and trackers
+to start the monitoring process!
 
 ## Hugging Face Accelerate
 
@@ -85,27 +58,53 @@ acc = Accelerator()
 loss_fn, model, optim, train_dataset = acc.prepare(loss_fn, model, optim, train_dataset)
 ```
 
-While manually calling and creating an accelerator is fine we recommend using our tracker methods to get one.
+While manually calling and creating an accelerator is fine we recommend you use our custom accelerate methods or our tracker
+methods to get one.
 
+#### get_accelerator
+
+If you do not wish to use an external tracking system to generate graphs for your model. Simply call `get accelerator`
+this method takes in your models training config (hyperparameters), all the objects you wish to prepare, followed by
+any additional accelerator specific arguments as kwargs. These additional arguments can be found [here ↗](https://huggingface.co/docs/accelerate/package_reference/accelerator)
+
+This method will return back the config_id, the accelerator, followed by all the prepared objects
+
+
+```python filename="TrainScript.py" copy
+from BenchKit.Tracking.Tracker import get_accelerator
+
+tracker_config = {
+        "epochs": 10,
+        "bs": 16,
+        "lr": 1e-2,
+        "loss": str(loss_fn)
+    }
+
+loss_fn = nn.BCELoss()
+model = MyModel(64)
+optim = opt.Adam(params=model.parameters(), lr=1e-2)
+
+train_dataset: DataLoader = get_dataloader(train_chunker,"my_ds")
+
+config_id, acc, loss_fn, model, optim,train_dataset = get_accelerator(tracker_config, loss_fn, model, optim, train_dataset)
+```
 #### Tracker
 
 Trackers are extensions accelerate offers to integrate your code directly with state-of-the-art tracking software,
 such as CometML, Wandb, and Tensorboard.
 
-Bench AI also offers a progress tracking system which can be seen on the experiment page:
-
-![Experiment Progress](https://sofadocsbucket.s3.us-west-2.amazonaws.com/assets/Tutorials/train-script/experiments-progress.png)
-
 `bench-kit` combines Accelerates tracking integrations with Bench AI's online progress tracking system.
 
-Our methods will return a tracker to you preconfigured with whichever system you wish, which will also update the site.
+Our methods will return a tracker to you preconfigured with whichever system you wish.
+
 ```python filename="TrainScript.py" copy
-from BenchKit.Tracking.Tracker import get_tensorboard_tracker
+from BenchKit.Tracking.Tracker import get_bench_tracker
 import torch.nn as nn
 import torch.optim as opt
 from Models.ProjectModels import MyModel
 from BenchKit.Data.Helpers import get_dataloader
 from Datasets.ProjectDatasets import MyChunker
+from BenchKit.Tracking.Graphers.TimeSeries import TimeSeries
 train_chunker = MyChunker()
 
 loss_fn = nn.BCELoss()
@@ -118,33 +117,47 @@ tracker_config = {
         "lr": 1e-2
     }
 
+train_loss_graph = TimeSeries("train loss graph",
+                                  "train loss",
+                                  "epochs",
+                                  "loss")
+
 train_dataset: DataLoader = get_dataloader(train_chunker, "my_ds")
-acc, train_dataset, val_dataset, model, loss_fn, optim = get_tensorboard_tracker(tracker_config,
+config_id, acc, train_dataset, val_dataset, model, loss_fn, optim = get_bench_tracker(tracker_config,
+                                                                                 (train_loss_graph,),
                                                                                  train_dataset,
                                                                                  val_dataset, model,
                                                                                  loss_fn, optim)
 ```
 
-In this example we use the tensorboard tracker. It takes in all the values a regular accelerator takes in, along with
-a config dict, used to label your runs for comparison in TensorBoard. The Prepared values are returned along with the
-accelerator itself.
+In this example we use the in house bench tracker. It takes in all the values a regular accelerator takes in, along with
+a config dict, and a tuple of graph objects. In this case we use a Time series graph which takes in 4 parameters
+("name", line_name / list is of line names, x-axis name, y-axis name). However, many graphing options will be available in house beyond
+a time series graph!
 
 ##### `log`
 To log using your tracker call `.log`
 ```python filename="TrainScript.py" copy
-from BenchKit.Tracking.Tracker import get_tensorboard_tracker
-
-acc, train_dataset, val_dataset, model, loss_fn, optim = get_tensorboard_tracker(tracker_config,
-                                                                                 train_dataset,
-                                                                                 val_dataset, model,
-                                                                                 loss_fn, optim)
-
-acc.log({"val_loss": 1}, step=1)
+acc.log({"train loss": 10,
+        "graph": "train loss graph"},
+        step=1)
 ```
-For the tensorboard tracker the log function takes in two parameters. The first a dictionary with a key representing the name of the tracked metric,
-and a value representing the metric itself. The second a kwarg called `step` representing where in the training cycle this metric takes place. In most cases the
-step should represent the current epoch you are at. Doing this you will be able to log to tensorboard as you normally would while also updating your progress
-on the Bench AI site
+For the bench tracker the log function is dependent on the graph you happen to use. In this case we want to log to our time series graph
+so our dictionary consists of two keys: the line name in this case "train loss" with the y-axis as the value and graph with the name of the graph as the value.
+Finally, we use step to send our x-axis value.
+
+To see your graph as your model trains run
+
+```bash copy
+bench-kit show-ex
+```
+
+<video controls loop muted autoPlay>
+  <source src="https://sofadocsbucket.s3.us-west-2.amazonaws.com/assets/Tutorials/train-script/show_graphs.mp4" type="video/mp4" />
+  Your browser does not support the video tag.
+</video>
+
+From here select your experiment, then appropriate config and the graphs will appear
 
 #### `backward`
 

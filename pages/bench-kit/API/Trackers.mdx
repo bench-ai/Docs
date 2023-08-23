@@ -1,0 +1,147 @@
+# Trackers
+---
+## Preface
+
+Visualizing your models performance is a central part of understanding your model. Graphs can tell us if our model
+is over fitting, performing poorly, or exceeding expectations. This is why `bench-kit` has direct integrations to top of the line
+tracking systems such as Wandb, CometML and Tensorboard while also providing our own in house graphing system.
+
+## Bench
+
+The Bench Tracker allows users to track their experiments using our visualisation suite. Everything works out of the box
+and integrates directly into the websites gui. It is the preferred tracker to use for the full bench experience!
+
+### get_bench_tracker
+to start using the tracker call the `get_bench_tracker` method.
+
+```python filename="TrainScript.py" copy
+from BenchKit.Tracking.Tracker import get_bench_tracker
+import torch.nn as nn
+import torch.optim as opt
+from Models.ProjectModels import MyModel
+from BenchKit.Tracking.Graphers.TimeSeries import TimeSeries
+
+loss_fn = nn.BCELoss()
+model = MyModel(64)
+optim = opt.Adam(params=model.parameters(), lr=1e-2)
+
+tracker_config = {
+        "epochs": 10,
+        "bs": 16,
+        "lr": 1e-2
+    }
+
+train_loss_graph = TimeSeries("train loss graph",
+                              "train loss",
+                              "epochs",
+                              "loss")
+
+config_id, acc, model, loss_fn, optim = get_bench_tracker(tracker_config,
+                                                         [train_loss_graph],
+                                                         model,
+                                                         loss_fn,
+                                                         optim)
+```
+#### Parameters
+
+- **config**: dict
+    + A dict of hyperparameters being used on the model
+
+- **graph_list**: list["BenchGraph"]
+    + A list of `BenchGraph objects`. These are the graphs that the tracker will write too, can be seen on the site,
+        and through the cli
+
+- **args**
+    + All the items you wish to prepare: models, schedulers, optimizer, loss function, datasets, etc.
+
+- **kwargs**: Optional
+    + All the extra arguments you wish to give to the accelerator
+
+#### Returns
+
+- **config_id**: str
+    + The id of the model config
+
+- **acc**: Accelerator
+    + The accelerator
+
+- **args**:
+    + The prepared objects
+
+You may have noticed that the method takes in a list of graphs. This list tells bench how many graphs you wish to see
+and what types they are.
+
+### Graphs
+
+#### Time Series
+
+```python filename="TrainScript.py" copy
+from BenchKit.Tracking.Graphers.TimeSeries import TimeSeries
+
+train_loss_graph = TimeSeries("train loss graph",
+                              "train loss",
+                              "epochs",
+                              "loss")
+```
+
+The time series graph is a standard cartesian plane graph.
+
+This graph is extremely useful when displaying sequential data, such as loss over epochs, and will look like such.
+
+<img src="https://sofadocsbucket.s3.us-west-2.amazonaws.com/assets/bench-kit/API/Trackers/loss_graph.png" alt="drawing" width="500"/>
+
+##### `__init__`
+
+###### Parameters
+
+- **graph_name**: str
+    + The name of the graph will be displayed as a title
+
+- **line_names**: str | tuple[str]
+    + The names of the lines to be displayed on the graph
+
+- **x_axis_name**: str
+    + The name of what the x-axis represents
+
+- **y_axis_name**:
+    + The name of what the y-axis represents
+
+##### `.log`
+
+```python filename="TrainScript.py" copy
+from BenchKit.Tracking.Tracker import get_bench_tracker
+
+train_loss_graph = TimeSeries("train loss graph",
+                              "train loss",
+                              "epochs",
+                              "loss")
+
+config_id, acc, model, loss_fn, optim = get_bench_tracker(tracker_config,
+                                                         [train_loss_graph],
+                                                         model,
+                                                         loss_fn,
+                                                         optim)
+
+acc.log({"train loss": 10,
+        "graph": "train loss graph"},
+        step=1)
+```
+
+###### Parameters
+
+- **values**: dict
+    + A dict where one key value pair must be `graph`: `<graph name>`. The name being the name provided to the BenchGraph object
+    + All other key pairs must be the name of the line, and it's y-axis value. The name must match the line name given in the BenchGraph
+  object
+
+- **step**: int
+    + The x-axis point for all the y-axis points being passed in the values dict
+
+## Wandb
+COMING SOON...
+
+## CometML
+COMING SOON...
+
+## TensorBoard
+COMING SOON...
