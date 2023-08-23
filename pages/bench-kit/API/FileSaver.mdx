@@ -212,7 +212,7 @@ class CsvFile(BaseFile):
     def reset(self):
         super().reset()
         self._file_name = super().file_name + "-csv.csv"
-        self._df: pd.DataFrame | None = None
+        self._df: pd.DataFrame = None
 ```
 In the reset method, we make a super call to the reset method, reset the file_name, and reset the dataframe.
 
@@ -328,8 +328,8 @@ The final change you have to make is that you must override one additional metho
 from BenchKit.Data.Datasets import IterableChunk
 
 class CsvChunker(IterableChunk):
-    @staticmethod
-    def file_converter(tag: str,
+    def file_converter(self,
+                       tag: str,
                        file_path: str) -> BaseFile:
 
         if tag == "csv":
@@ -426,8 +426,6 @@ ten_instance = TorchFile.load("path/to/my/file.pt")
 ```
 `TorchFile` takes in an argument `shape` which will be the shape of all tensors passed in.
 
-`JsonFile` saves all valid json data into a json file
-
 ### `JsonFile`
 
 ```python filename="FileSaver.py" copy
@@ -439,6 +437,7 @@ j_instance.append({"my_list": [1, 2, 3, 4, 5]})
 j_instance = JsonFile.load("path/to/my/file.json")
 
 ```
+
 `JsonFile` saves all valid json data into a json file
 
 ### `NumericFile`
@@ -466,5 +465,22 @@ raw_instance = RawFile.load("path/to/my/dir")
 
 ```
 `RawFile` copies all files into the appropriate dir to be zipped
+
+#### `append`
+
+##### Parameters
+
+- **file_path**: str
+    + the path to the file that is to be processed
+
+#### `load`
+
+##### Parameters
+
+- **save_path**: str
+    + the path to the folder holding the file `ann.json`, this file is a guide of all files saved in the processed
+        directory
+
+
 
 
