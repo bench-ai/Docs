@@ -38,7 +38,7 @@ class MyProcessorDataset(ProcessorDataset):
     ...
 ```
 
-The `ProcessorDataset` class allows `bench-kit` to process your data, zip it, and ship it to the cloud.
+The `ProcessorDataset` class allows `bench-kit` to process your data, zip it, and upload it to the cloud.
 
 To begin inherit from the `ProcessorDataset` class and write four methods.
 
@@ -112,6 +112,9 @@ class MyProcessorDataset(ProcessorDataset):
         return len(self._data_list)
 ```
 
+Now that you have a class that uploads your data, your going to need a class that downloads that data and feeds it into
+your model.
+
 ### IterableChunk
 
 ```python filename="ProjectDatasets.py" copy
@@ -121,8 +124,8 @@ class MyChunker(IterableChunk):
     ...
 ```
 
-The `IterableChunk` class is made from a standard Pytorch Iterable Dataset class. It pulls the zipped files uploaded by the processor dataset and unpacks them
-to be used in training. It is at this stage where you will then apply transformations to your data if necessary.
+The `IterableChunk` class is a standard Pytorch Iterable Dataset. It pulls the zipped files uploaded by the processor dataset and unpacks them
+to be used in training. It is here where you can apply transformations to your data if necessary.
 
 To use the `IterableChunk` class inherit from it, and implement two methods:
 
@@ -138,37 +141,12 @@ class MyChunker(IterableChunk):
 #### `unpack_data`
 
 This method is equivalent to `__getitem__` in a regular pytorch dataset. Based on the order you saved your `FileSaver`'s in the `_get_savers` method, your data will now
-be returned to you, loaded in the same order.
+be returned to you in that same order.
 
 For example if I used a `NumFile` saver to save my numeric data and a `BooleanFile` saver to save my boolean data like such.
 
-```python filename="ProjectDatasets.py" copy
-from BenchKit.Data.Datasets import IterableChunk
-
-class MyProcessorDataset(ProcessorDataset):
-    def _get_data(self, idx: int):
-        assert idx == 0
-        num_data = [1, 2, 3]
-        bool_data = [True, False, True]
-        self.nf1.append(num_data[idx])
-        self.bf1.append(bool_data[idx])
-```
-
-And the `_get_savers` method returned the `NumFile` saver then the `BooleanFile` saver like such
-
-```python filename="ProjectDatasets.py" copy
-from BenchKit.Data.Datasets import IterableChunk
-from BenchKit.Data.FileSaver import NumericFile
-
-class MyChunker(IterableChunk):
-    def _get_savers(self):
-        return self.nf1, self.bf1
-```
-
-Then if I did not override `unpack_data` it would return `1` and `True`.
-
-However, in most cases you will want to perform transformations to your data before feeding it to your model. To acheive this
-override `unpack_data`, and apply transformations to the super call of the same method, returning the transformed data at the end.
+Then I could use `unpack_data` to get my data and apply transformations to it. The only requirement in the method being
+you make a `super` call to unpack data first.
 
 ```python filename="ProjectDatasets.py" copy
 from BenchKit.Data.Datasets import IterableChunk
@@ -183,6 +161,9 @@ class MyChunker(IterableChunk):
         return num + 10, int(boolean) * 100
 ```
 
+Great! We now have a class to upload our data, and a class to download the data. Now bench-kit has the information it
+needs to make your dataset cloud ready!
+
 ## Migrate your Data to the Cloud
 
 You are now ready to migrate your data to the cloud
@@ -193,19 +174,19 @@ In order for bench-kit to understand the classes you are using you need to retur
 
 Return a list of tuples, of which each Tuple should represent a new dataset you wish to upload.
 
-Each tuple needs 4 items
+Each tuple needs 3 items
 
-- The `ProcessorDataset` <b>object</b>
-- The `IterableChunk` <b>class</b>
-- The `IterableChunk` args as a list
-- The `IterableChunk` kwargs as a dict
+- Your `ProcessorDataset` for that dataset
+- The `IterableChunk` for that dataset
+- A name you would like to give that dataset
 
 ```python filename="ProjectDatasets.py" copy
 def main():
     du = MyProcessorDataset(my_train_path)
+    dc = MyChunker()
 
     return [
-        (du, MyChunker, "Train_DS", [], {})
+        (du, dc, "Train_DS")
     ]
 ```
 
@@ -252,7 +233,20 @@ python manage.py migrate-data --tdl
 python manage.py migrate-data --up
     ```
 
+## Cloud Dataloader
 
+To train your model in pytorch a dataset is wrapped with a dataloader. This process does not change with `bench-kit`,
+however we recommend you make a call to get_dataloader. `get_dataloader` will return you the dataloader wrapped around
+your ChunkDataset synced for the cloud without any other manual effort. To get your dataloader simply pass in your
+ChunkDataset and the name of the dataset. Optionally you can pass in the worker count and the batch size.
+
+```python filename="ProjectDatasets.py" copy
+from BenchKit.Data.Helpers import get_dataloader
+
+dc = MyChunker()
+val_dataset: DataLoader = get_dataloader(dc, "Train_DS", num_workers=2, batch_size=8)
+
+```
 
 
 
