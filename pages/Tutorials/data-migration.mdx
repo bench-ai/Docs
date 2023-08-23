@@ -236,9 +236,9 @@ python manage.py migrate-data --up
 ## Cloud Dataloader
 
 To train your model in pytorch a dataset is wrapped with a dataloader. This process does not change with `bench-kit`,
-however we recommend you make a call to get_dataloader. `get_dataloader` will return you the dataloader wrapped around
-your ChunkDataset synced for the cloud without any other manual effort. To get your dataloader simply pass in your
-ChunkDataset and the name of the dataset. Optionally you can pass in the worker count and the batch size.
+however we recommend you make a call to `get_dataloader`. `get_dataloader` will return your ChunkDataset wrapped with
+a cloud ready dataloader. To get your dataloader simply pass in your ChunkDataset and the name of the dataset. You can 
+also pass in the worker count and the batch size if the defaults don't suit you.
 
 ```python filename="ProjectDatasets.py" copy
 from BenchKit.Data.Helpers import get_dataloader
