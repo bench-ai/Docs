@@ -1,0 +1,121 @@
+# CLI Commands
+
+## Project
+
+### Start Project
+
+Connects your local code to the bench-ai project. Creates required directory structure.
+```bash filename="> Terminal" copy
+bench-kit <project-id> <api-key>
+```
+
+### Project Info
+
+Shows info about your project
+```bash filename="> Terminal" copy
+bench-kit project-info
+```
+![project-info](https://sofadocsbucket.s3.us-west-2.amazonaws.com/assets/bench-kit/CLI/project-info.png)
+
+### Logout
+
+Makes sure no other bench-kit command can be executed with the start-project credentials. User must restart project to gain
+access.
+```bash filename="> Terminal" copy
+bench-kit logout
+```
+
+## Datasets
+
+### Show Datasets
+
+Shows info about all your datasets
+```bash filename="> Terminal" copy
+bench-kit show-ds
+```
+
+![show-ds](https://sofadocsbucket.s3.us-west-2.amazonaws.com/assets/bench-kit/CLI/show-ds.png)
+### Delete Datasets
+
+Deletes a dataset based on the number provided
+```bash filename="> Terminal" copy
+bench-kit del-ds
+```
+![del-ds](https://sofadocsbucket.s3.us-west-2.amazonaws.com/assets/bench-kit/CLI/del-ds.png)
+
+## Versions
+
+### Show Versions
+
+Shows info about all your code versions
+```bash filename="> Terminal" copy
+bench-kit show-vs
+```
+![del-vs](https://sofadocsbucket.s3.us-west-2.amazonaws.com/assets/bench-kit/CLI/show-vs.png)
+
+### Delete Version
+
+Deletes the version you specify
+```bash filename="> Terminal" copy
+bench-kit del-vs
+```
+![del-vs](https://sofadocsbucket.s3.us-west-2.amazonaws.com/assets/bench-kit/CLI/del-vs.png)
+
+### Pull Version
+
+Pulls the version code down to your local machine
+```bash filename="> Terminal" copy
+bench-kit pull-vs <version-number>
+```
+
+## Checkpoints
+
+### Show Checkpoints
+
+Shows all checkpoints that have been saved
+```bash filename="> Terminal" copy
+bench-kit show-check
+```
+![show-check](https://sofadocsbucket.s3.us-west-2.amazonaws.com/assets/bench-kit/CLI/show-check.png)
+### Get Checkpoint
+
+Pulls checkpoint to local machine
+```bash filename="> Terminal" copy
+bench-kit get-check
+```
+![show-check](https://sofadocsbucket.s3.us-west-2.amazonaws.com/assets/bench-kit/CLI/get-check.png)
+
+### Del Checkpoint
+
+Deletes Checkpoint
+```bash filename="> Terminal" copy
+bench-kit del-check
+```
+![show-check](https://sofadocsbucket.s3.us-west-2.amazonaws.com/assets/bench-kit/CLI/del-check.png)
+
+## Experiments
+
+### Experiment Details
+
+See logs or Experiment Metrics
+```bash filename="> Terminal" copy
+bench-kit show-ex
+```
+
+#### Show Logs
+
+<video controls loop muted autoPlay>
+        <source src="https://sofadocsbucket.s3.us-west-2.amazonaws.com/assets/bench-kit/CLI/show-ex-logs.mp4" type="video/mp4" />
+        Your browser does not support the video tag.
+</video>
+
+#### Show Config and Graphs
+
+<video controls loop muted autoPlay>
+        <source src="https://sofadocsbucket.s3.us-west-2.amazonaws.com/assets/Tutorials/train-script/show_graphs.mp4" type="video/mp4" />
+        Your browser does not support the video tag.
+</video>
+
+
+
+
