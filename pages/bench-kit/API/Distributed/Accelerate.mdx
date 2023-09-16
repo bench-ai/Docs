@@ -1,0 +1,205 @@
+# Hugging Face Accelerate
+
+Bench AI offers users top of the line servers, in various different configurations.
+Users can train their models on up to 8 gpu's, however to fully utilize these configurations requires the use of
+distributed training libraries.
+
+`bench-kit` directly integrates with Hugging Face Accelerate allowing users to train their models on distributed systems
+without needing to change most of their code.
+
+## `Accelerator`
+The Accelerator is the main focal point for the Hugging Face accelerate API. It does all the heavy lifting of gpu synchronization
+and distributed operations for the user.
+
+### `Prepare`
+Any objects that are to be used in the training process should be passed into the `Accelerator.prepare()` method, this signals
+to the Accelerator API that these objects will be directly used in the training process.
+
+Objects that are generally passed into this method are:
+- dataloaders
+- models
+- optimizers
+- schedulers
+
+```python filename="TrainScript.py" copy
+from accelerate import Accelerator
+import torch.nn as nn
+import torch.optim as opt
+from Models.ProjectModels import MyModel
+from BenchKit.Data.Helpers import get_dataloader
+from Datasets.ProjectDatasets import MyChunker
+train_chunker = MyChunker()
+
+loss_fn = nn.BCELoss()
+model = MyModel(64)
+optim = opt.Adam(params=model.parameters(), lr=1e-2)
+
+train_dataset: DataLoader = get_dataloader(train_chunker,"my_ds")
+acc = Accelerator()
+loss_fn, model, optim, train_dataset = acc.prepare(loss_fn, model, optim, train_dataset)
+```
+
+While manually calling and creating an accelerator is fine we recommend you use our custom accelerate methods or our tracker
+methods to get one.
+
+#### get_bench_accelerator
+
+If you do not wish to use an external tracking system to generate graphs for your model. Simply call `get_bench_accelerator`
+this method take in all the objects you wish to prepare, followed by any additional accelerator specific arguments as kwargs.
+These additional arguments can be found [here ↗](https://huggingface.co/docs/accelerate/package_reference/accelerator)
+
+This method will return back the accelerator, followed by all the prepared objects
+
+```python filename="TrainScript.py" copy
+from BenchKit.distributed.accelerate.helpers import get_bench_accelerator
+
+loss_fn = nn.BCELoss()
+model = MyModel(64)
+optim = opt.Adam(params=model.parameters(), lr=1e-2)
+
+train_dataset: DataLoader = get_dataloader(train_chunker,"my_ds")
+
+config_id, acc, loss_fn, model, optim,train_dataset = get_bench_accelerator(loss_fn, model, optim, train_dataset)
+```
+#### Tracker
+
+`accelerate` offers integrations with all the top trackers including Wandb, Tensorboard, and CometML. Here we will show you
+how to integrate `accelerate` with our in house tracker.
+
+Make a call to `get_accelerator_with_bench_tracker` this method will prepare all relevant objects, and will them
+along with an accelerator initialized with the respective graphs.
+
+```python filename="TrainScript.py" copy
+import torch.nn as nn
+from BenchKit.tracking.config import Config
+from BenchKit.distributed.accelerate.helpers import get_accelerator_with_bench_tracker
+import torch.optim as opt
+from Models.ProjectModels import MyModel
+from BenchKit.Data.Helpers import get_dataloader
+from Datasets.ProjectDatasets import MyChunker
+from BenchKit.tracking.graphs.time_series import TimeSeries
+from torch.utils.data import DataLoader
+
+train_chunker = MyChunker()
+loss_fn = nn.BCELoss()
+model = MyModel(64)
+optim = opt.Adam(params=model.parameters(), lr=1e-2)
+
+tracker_config = {
+        "epochs": 10,
+        "bs": 16,
+        "lr": 1e-2
+    }
+
+model_config = Config(tracker_config,
+                      "val_loss",
+                      "min") # initialize the config
+
+"""
+Create all relevant graphs for tracking
+"""
+train_loss_graph = TimeSeries("train_loss",
+                              model_config,
+                              "loss_line",
+                              "epochs",
+                              "loss")
+
+val_loss_graph = TimeSeries("val_loss",
+                            model_config,
+                            "loss_line",
+                            "epochs",
+                            "loss")
+
+train_dataset: DataLoader = get_dataloader(train_chunker, "my_ds")
+
+"""
+Pass in your graphs and all the objects you wish to prepare
+"""
+acc, loss_fn, model, optim, train_dataset, val_dataset = get_accelerator_with_bench_tracker([train_loss_graph,
+                                                                                             val_loss_graph],
+                                                                                            loss_fn,
+                                                                                            model,
+                                                                                            optim,
+                                                                                            train_dataset)
+```
+
+##### `log`
+To log to the `Bench AI` tracker call `.log`
+```python filename="TrainScript.py" copy
+"""
+Pass in a dictionary and step to .log.
+The dictionary will contain two pairs. First is {<line_name> : <y-axis_value>}, and {"graph": <graph_name>}.
+Step will take the x-axis value
+"""
+acc.log({"loss_line": 10,
+        "graph": "train_loss"},
+        step=1)
+```
+
+### `backward`
+
+Instead of calling `.backwards` on your loss value call it on your accelerator
+```python filename="TrainScript.py" copy
+acc.backwards(loss)
+```
+
+### `device`
+
+Hugging Face Accelerate manages device placement for the user as long as all relevant values have been passed into
+the prepare function. However, there are some cases where you will create a Tensor that needs to be fed into your
+model, and it won't initially be on the right device.
+
+For example
+```python filename="TrainScript.py" copy
+from BenchKit.distributed.accelerate.helpers import get_bench_accelerator
+import torch
+acc, train_dataset, val_dataset, model, loss_fn, optim = get_bench_accelerator(train_dataset,
+                                                                               val_dataset, model,
+                                                                               loss_fn, optim)
+
+for batch in train_dataset:
+    target, inp = batch # on device
+    targets = targets.type(torch.FloatTensor) # returns new tensor on CPU
+```
+
+In cases like this where your tensor is no longer on the right GPU, transport it back using `accelerate.device`
+```python filename="TrainScript.py" copy
+targets = targets.to(acc.device) # puts tensor on the right GPU
+```
+
+### Multi GPU Considerations
+
+When training using multiple GPUs each GPU is treated as an individual Process. Meaning if you are using an 8 GPU server
+there will be 8 processes of your model training on your server.
+
+This means every line of code in your training script will effectively run `N` times, where `N` is the number of processes. In most cases this is ok
+but for some operations it is not preferred.
+
+#### `print`
+When printing in most cases you may want to see a message once. To have a print statement not repeat `N` times use `Accelerate.print()`
+```python filename="TrainScript.py" copy
+acc.print("I ❤️ Bench AI!!!")
+```
+
+#### `is_local_main_process`
+In general if you want an operation to only take place on one process you can use the command `Accelerate.is_local_main_process`. This will return a
+boolean value depending on if the statement is true.
+
+```python filename="TrainScript.py" copy
+if acc.is_local_main_process:
+    acc.print("I am the main")
+```
+
+`Accelerate.log` uses this condition under the hood to make sure a log isn't sent for each process.
+
+#### `gather_for_metrics`
+
+When logging loss you don't generally want to log per process. Instead, you will want to record the combined loss of all
+processes. In scenarios like this use the `accelerate.gather_for_metrics` method. This will synchronize all tensors on each
+process into one Tensor which can now easily be logged
+
+```python filename="TrainScript.py" copy
+for batch in train_dataset:
+    loss = loss_fn(torch.Tensor([10]), torch.Tensor([100]))
+    full_loss: torch.Tensor = acc.gather_for_metrics(loss)
+```

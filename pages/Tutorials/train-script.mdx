@@ -3,281 +3,470 @@
 You are now ready to start writing code to begin training your model. Start off by writing all training related scripts in
 the `TrainScript.py` file.
 
-## Config
-
-A config isn't a special yaml file which a user has to declare rather it's a set of hyperparameters you wish to track with
-your model. These hyperparameters will be displayed for you on the Bench AI site, so you know exactly what parameters gave you
-those amazing results! In further examples you will see that configs will be passed in as dictionary's to accelerators and trackers
-to start the monitoring process!
-
-## Hugging Face Accelerate
-
-Bench AI offers users top of the line servers, in various different configurations.
-Users can train their models on up to 8 gpu's, however to fully utilize these configurations requires the use of
-distributed training libraries.
-
-`bench-kit` directly integrates with Hugging Face Accelerate allowing users to train their models on distributed systems
-without needing to change most of their code.
-
-Hugging Face Accelerate provides integrations with various model trackers, allowing users to use their favorite
-trackers such as TensorBoard right out of the box. Hugging Face Accelerate also provides in depth features that allows users to optimize their distributed training pipeline. All of which can be found in
-the [Accelerate docs ↗](https://huggingface.co/docs/accelerate/index).
-
-For the rest of the section the essentials of what's needed to turn your regular Pytorch training script into an
-Accelerate compatible script will be displayed.
-
-### `Accelerator`
-The Accelerator is the main focal point for the Hugging Face accelerate API. It does all the heavy lifting of gpu synchronization
-and distributed operations for the user.
-
-#### `Prepare`
-Any objects that are to be used in the training process should be passed into the `Accelerator.prepare()` method, this signals
-to the Accelerator API that these objects will be directly used in the training process.
-
-Objects that are generally passed into this method are:
-- dataloaders
-- models
-- optimizers
-- schedulers
+Training using `Bench AI` is the exact same as training in regular pytorch.
 
 ```python filename="TrainScript.py" copy
-from accelerate import Accelerator
+import torch
+from BenchKit.Data.Helpers import get_dataloader # Turns a IterableChunk to a pytorch Dataloader
+from Datasets.ProjectDatasets import MyChunkDS # The IterableChunk dataset
+from Models.ProjectModels import MyModel
 import torch.nn as nn
 import torch.optim as opt
-from Models.ProjectModels import MyModel
-from BenchKit.Data.Helpers import get_dataloader
-from Datasets.ProjectDatasets import MyChunker
-train_chunker = MyChunker()
-
-loss_fn = nn.BCELoss()
-model = MyModel(64)
-optim = opt.Adam(params=model.parameters(), lr=1e-2)
-
-train_dataset: DataLoader = get_dataloader(train_chunker,"my_ds")
-acc = Accelerator()
-loss_fn, model, optim, train_dataset = acc.prepare(loss_fn, model, optim, train_dataset)
-```
-
-While manually calling and creating an accelerator is fine we recommend you use our custom accelerate methods or our tracker
-methods to get one.
-
-#### get_accelerator
-
-If you do not wish to use an external tracking system to generate graphs for your model. Simply call `get accelerator`
-this method takes in your models training config (hyperparameters), all the objects you wish to prepare, followed by
-any additional accelerator specific arguments as kwargs. These additional arguments can be found [here ↗](https://huggingface.co/docs/accelerate/package_reference/accelerator)
-
-This method will return back the config_id, the accelerator, followed by all the prepared objects
+from torch.utils.data import DataLoader
 
 
-```python filename="TrainScript.py" copy
-from BenchKit.Tracking.Tracker import get_accelerator
+def train_one_epoch(train_dl: DataLoader,
+                    model: nn.Module,
+                    optim: torch.optim.Optimizer,
+                    loss_fn: torch.nn.BCELoss,
+                    device: torch.device) -> torch.Tensor:
 
-tracker_config = {
+    """
+    Trains a model for one entire epoch, and returns the average loss
+    """
+
+    model.train() # Ensure that weight modification and dynamic behaviors is on
+
+    loss_tensor = torch.zeros(size=(len(train_dl),),
+                              device=device,
+                              dtype=torch.float32) # used to hold the loss of each batch
+
+    for idx, batch in enumerate(train_dl):
+
+        optim.zero_grad() # resets the gradients to zero before back propagation
+        targets, inputs = batch
+
+        """
+        Makes sure inputs and a targets are of the right datatype, and are on the right device
+        """
+
+        inputs: torch.Tensor = inputs.to(device)
+        targets: torch.Tensor = torch.unsqueeze(targets, dim=1)
+        targets = targets.type(torch.FloatTensor)
+        targets = targets.to(device)
+
+        outputs = model(inputs)
+
+        loss = loss_fn(outputs, targets)
+        loss.backward(loss) # Back propagates the loss
+        optim.step() # Optimizer takes a gradient step
+
+        loss_tensor[idx] = loss
+
+    return torch.mean(loss_tensor) # the average loss of the epoch
+
+
+def validate_one_epoch(test_dl: DataLoader,
+                       model: nn.Module,
+                       loss_fn: torch.nn.BCELoss,
+                       device: torch.device):
+
+    """
+    Tests the model, and returns the average loss
+    """
+
+    model.eval() # Offs weight modification and dynamic behaviours
+
+    loss_tensor = torch.zeros(size=(len(test_dl),),
+                              device=device,
+                              dtype=torch.float32) # Stores the loss of every batch
+
+    with torch.no_grad(): # Ensures gradient modifications do not take place. Extra precaution
+
+        for idx, batch in enumerate(test_dl):
+            targets, inputs = batch
+
+            """
+            Makes sure inputs and a targets are of the right datatype, and are on the right device
+            """
+
+            inputs: torch.Tensor = inputs.to(device)
+            targets: torch.Tensor = torch.unsqueeze(targets, dim=1)
+            targets = targets.type(torch.FloatTensor)
+            targets = targets.to(device)
+
+            outputs = model(inputs)
+            loss: torch.Tensor = loss_fn(outputs, targets)
+
+            loss_tensor[idx] = loss
+
+    return torch.mean(loss_tensor) # returns the average loss
+
+def main():
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu") # Ensures Cuda is used
+
+    loss_fn = nn.BCELoss().to(device) # Binary Cross Entropy Loss. Useful for categorical data
+    model = MyModel(64).to(device)
+
+    optim = opt.Adam(params=model.parameters(),
+                     lr=1e-2)
+
+    tracker_config = {
         "epochs": 10,
         "bs": 16,
         "lr": 1e-2,
-        "loss": str(loss_fn)
-    }
+        "loss": str(loss_fn),
+    } # A baseline configuration of hyperparameters used to train this model
 
-loss_fn = nn.BCELoss()
-model = MyModel(64)
-optim = opt.Adam(params=model.parameters(), lr=1e-2)
+    """
+    Turn IterableChunk's to Dataloaders
+    """
+    train_chunker = MyChunkDS()
+    train_dataset: DataLoader = get_dataloader(train_chunker,
+                                               "HH_Train_V1")
 
-train_dataset: DataLoader = get_dataloader(train_chunker,"my_ds")
+    val_chunker = MyChunkDS()
+    val_dataset: DataLoader = get_dataloader(val_chunker,
+                                             "HH_Val_V1")
 
-config_id, acc, loss_fn, model, optim,train_dataset = get_accelerator(tracker_config, loss_fn, model, optim, train_dataset)
+    for e in range(tracker_config["epochs"]):
+        train_one_epoch(train_dataset, model, optim, loss_fn, device)
+        validate_one_epoch(val_dataset, model, loss_fn, device)
 ```
-#### Tracker
 
-Trackers are extensions accelerate offers to integrate your code directly with state-of-the-art tracking software,
-such as CometML, Wandb, and Tensorboard.
+## Config
 
-`bench-kit` combines Accelerates tracking integrations with Bench AI's online progress tracking system.
+Bench Ai's use cases don't stop at training your model. We offer a whole suite of tools to help track and understand how your models
+are doing. To take advantage of these features start by initializing a model config.
 
-Our methods will return a tracker to you preconfigured with whichever system you wish.
+A model config takes in 3 values: the hyperparameters used to train your model, what metric this model should be judged against, and
+whether we should maximize or minimize that metric.
 
 ```python filename="TrainScript.py" copy
-from BenchKit.Tracking.Tracker import get_bench_tracker
-import torch.nn as nn
-import torch.optim as opt
-from Models.ProjectModels import MyModel
-from BenchKit.Data.Helpers import get_dataloader
-from Datasets.ProjectDatasets import MyChunker
-from BenchKit.Tracking.Graphers.TimeSeries import TimeSeries
-train_chunker = MyChunker()
+from BenchKit.tracking.config import Config
 
-loss_fn = nn.BCELoss()
-model = MyModel(64)
-optim = opt.Adam(params=model.parameters(), lr=1e-2)
-
-tracker_config = {
+hyperparameters = {
         "epochs": 10,
         "bs": 16,
-        "lr": 1e-2
+        "lr": 1e-2,
+        "loss": "BCE_LOSS"} # The hyperparameters you wish to keep track of
+
+model_config = Config(tracker_config, # hyperparams we are using for this model
+                      "val_loss", # We will be evaluating this model based on validation loss
+                      "min") # We will be trying to minimize validation loss
+```
+
+### Saving & Checkpointing
+
+If you wish to save and checkpoint your model use the `save_model_and_state` function of your config. This method will save
+a checkpoint everytime this method is called, it will also save the model everytime the evaluation criteria is improved. To
+use this model pass in: a function that checkpoints your model to a directory, a function that saves your model to a directory,
+the iteration you are on, and the value of the evaluation criteria at that iteration.
+
+Here is an example of how to save checkpoints and saves in vanilla pytorch.
+
+```python filename="TrainScript.py" copy
+from BenchKit.tracking.config import Config
+from Models.ProjectModels import MyModel
+from functools import partial
+import torch.optim as opt
+import torch
+import os
+
+def save_model(model: torch.nn.Module,
+               example_input: torch.Tensor) -> str:
+
+    """
+    Uses Torch's Just in Time compiler to trace and save your model. This allows it to be
+    run without needing the model class.
+    """
+
+    dir_path = os.path.join(".", "model-artifacts", "save")
+    os.makedirs(dir_path, exist_ok=True)
+
+    model_path = os.path.join(dir_path, f"model.pt")
+
+    traced_model = torch.jit.trace(model, example_input) # traces the model, requires a sample input
+    traced_model.save(model_path) # saves the model to the directory we specified
+
+    return dir_path # returns the directory containing the traced model
+
+def save_state(epoch: int,
+               model: torch.nn.Module,
+               optimizer: torch.optim,
+               loss: torch.Tensor):
+
+    """
+    Saves the state dict and key values of the model for continued training
+    """
+
+    path = os.path.join(".", "model-artifacts", "checkpoints", f"{epoch}")
+    os.makedirs(path, exist_ok=True)
+
+    tar_path = os.path.join(path, f"checkpoint.tar")
+
+    torch.save({
+        'epoch': epoch,
+        'model_state_dict': model.state_dict(),
+        'optimizer_state_dict': optimizer.state_dict(),
+        'loss': loss,
+    }, tar_path) # saves all relevant states to the tar_path
+
+    return path # returns the directory containing the tar
+
+def main():
+    hyperparameters = {
+            "epochs": 10,
+            "bs": 16,
+            "lr": 1e-2,
+            "loss": "BCE_LOSS"} # The hyperparameters you wish to keep track of
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu") # Ensures Cuda is used
+
+    model = MyModel(64).to(device)
+
+    optim = opt.Adam(params=model.parameters(),
+                     lr=1e-2)
+
+    model_config = Config(hyperparameters, # hyperparams we are using for this model
+                          "val_loss", # We will be evaluating this model based on validation loss
+                          "min") # We will be trying to minimize validation loss
+
+    save_model_func = partial(save_model,
+                              model,
+                              torch.ones(1, 3, 256, 256).to(device)) # makes save_model_func a callable
+                                                                     # with all the arguments locked in
+
+    e: int = 0
+    val_loss: int = 0
+
+    save_state_func = partial(save_state,
+                              e,
+                              model,
+                              optim,
+                              val_loss) # makes save_state a callable with all the arguments locked in
+
+    model_config.save_model_and_state(save_state_func,
+                                      save_model_func,
+                                      e,
+                                      float(val_loss)) # Saves a checkpoint, and a Save if appropriate
+
+```
+
+You can subsequently see all the checkpoints and saves of your model by running
+
+### Graphing
+If you wish to visualize how your model is performing you can incorporate one of our trackers. Here we will show how to
+use our `TimeSeries` graph.
+
+```python filename="TrainScript.py" copy
+from BenchKit.tracking.config import Config
+from BenchKit.tracking.graphs.time_series import TimeSeries
+
+def main():
+    hyperparameters = {
+            "epochs": 10,
+            "bs": 16,
+            "lr": 1e-2,
+            "loss": "BCE_LOSS"} # The hyperparameters you wish to keep track of
+
+    model_config = Config(hyperparameters, # hyperparams we are using for this model
+                          "val_loss", # We will be evaluating this model based on validation loss
+                          "min") # We will be trying to minimize validation loss
+
+    val_loss_graph = TimeSeries("val_loss", # Name of the graph
+                                model_config, # The Config for the model being trained
+                                "loss", # name of the line
+                                "epochs", # x axis name
+                                "loss") # y axis name
+
+```
+
+If you wish to have multiple lines in your graph you can do this
+```python filename="TrainScript.py" copy
+val_loss_graph = TimeSeries("val_loss", # Name of the graph
+                             model_config, # The Config for the model being trained
+                             ("l1", "l2"), # name of the lines
+                             "epochs", # x axis name
+                             "loss") # y axis name
+```
+
+To plot a point call `.log_value`
+```python filename="TrainScript.py" copy
+"""
+Pass in two values, the first will be a dictionary where the key is the name of the line, and the value is the
+y-axis value, then pass in a step that is the x-axis value
+"""
+val_loss_graph.log_value({"loss": 0.0}, step=0)
+```
+
+### Full Code
+
+```python filename="TrainScript.py" copy
+from functools import partial
+
+import torch
+import os
+from BenchKit.Data.Helpers import get_dataloader
+from Datasets.ProjectDatasets import MyChunkDS
+from Models.ProjectModels import MyModel
+from BenchKit.tracking.config import Config
+from BenchKit.tracking.graphs.time_series import TimeSeries
+import torch.nn as nn
+import torch.optim as opt
+from tqdm import tqdm
+from torch.utils.data import DataLoader
+
+
+def save_model(model: torch.nn.Module,
+               example_input: torch.Tensor) -> str:
+
+    dir_path = os.path.join(".", "model-artifacts", "save")
+    os.makedirs(dir_path, exist_ok=True)
+
+    model_path = os.path.join(dir_path, f"model.pt")
+
+    traced_model = torch.jit.trace(model, example_input)
+    traced_model.save(model_path)
+
+    return dir_path
+
+
+def save_state(epoch: int,
+               model: torch.nn.Module,
+               optimizer: torch.optim,
+               loss: torch.Tensor):
+    path = os.path.join(".", "model-artifacts", "checkpoints", f"{epoch}")
+    os.makedirs(path, exist_ok=True)
+
+    tar_path = os.path.join(path, f"checkpoint.tar")
+
+    torch.save({
+        'epoch': epoch,
+        'model_state_dict': model.state_dict(),
+        'optimizer_state_dict': optimizer.state_dict(),
+        'loss': loss,
+    }, tar_path)
+
+    return path
+
+
+def train_one_epoch(train_dl: DataLoader,
+                    model: nn.Module,
+                    optim: torch.optim.Optimizer,
+                    loss_fn: torch.nn.BCELoss,
+                    device: torch.device) -> torch.Tensor:
+
+    model.train()
+    loss_tensor = torch.zeros(size=(len(train_dl),),
+                              device=device,
+                              dtype=torch.float32)
+
+    for idx, batch in tqdm(enumerate(train_dl),
+                              colour="blue"):
+        optim.zero_grad()
+        targets, inputs = batch
+
+        inputs: torch.Tensor = inputs.to(device)
+        targets: torch.Tensor = torch.unsqueeze(targets, dim=1)
+        targets = targets.type(torch.FloatTensor)
+        targets = targets.to(device)
+
+        outputs = model(inputs)
+
+        loss = loss_fn(outputs, targets)
+        loss.backward(loss)
+        optim.step()
+
+        loss_tensor[idx] = loss
+
+    return torch.mean(loss_tensor)
+
+
+def validate_one_epoch(test_dl: DataLoader,
+                       model: nn.Module,
+                       loss_fn: torch.nn.BCELoss,
+                       device: torch.device):
+    model.eval()
+    loss_tensor = torch.zeros(size=(len(test_dl),),
+                              device=device,
+                              dtype=torch.float32)
+
+    with torch.no_grad():
+        for idx, batch in tqdm(enumerate(test_dl), colour="blue"):
+            targets, inputs = batch
+            inputs: torch.Tensor = inputs.to(device)
+            targets: torch.Tensor = torch.unsqueeze(targets, dim=1)
+            targets = targets.type(torch.FloatTensor)
+            targets = targets.to(device)
+
+            outputs = model(inputs)
+            loss: torch.Tensor = loss_fn(outputs, targets)
+
+            loss_tensor[idx] = loss
+
+    return torch.mean(loss_tensor)
+
+
+def main():
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    print(f"The current device is {device}")
+
+    loss_fn = nn.BCELoss().to(device)
+    model = MyModel(64).to(device)
+
+    optim = opt.Adam(params=model.parameters(),
+                     lr=1e-2)
+
+    tracker_config = {
+        "epochs": 10,
+        "bs": 16,
+        "lr": 1e-2,
+        "loss": str(loss_fn),
     }
 
-train_loss_graph = TimeSeries("train loss graph",
-                                  "train loss",
+    model_config = Config(tracker_config,
+                          "val_loss",
+                          "min")
+
+    train_loss_graph = TimeSeries("train_loss",
+                                  model_config,
+                                  "loss",
                                   "epochs",
                                   "loss")
 
-train_dataset: DataLoader = get_dataloader(train_chunker, "my_ds")
-config_id, acc, train_dataset, val_dataset, model, loss_fn, optim = get_bench_tracker(tracker_config,
-                                                                                 (train_loss_graph,),
-                                                                                 train_dataset,
-                                                                                 val_dataset, model,
-                                                                                 loss_fn, optim)
+    val_loss_graph = TimeSeries("val_loss",
+                                model_config,
+                                "loss",
+                                "epochs",
+                                "loss")
+
+    train_chunker = MyChunkDS(True)
+    train_dataset: DataLoader = get_dataloader(train_chunker,
+                                               "HH_Train_V1")
+
+    val_chunker = MyChunkDS(False)
+    val_dataset: DataLoader = get_dataloader(val_chunker,
+                                             "HH_Val_V1")
+
+    for e in range(tracker_config["epochs"]):
+        train_loss = train_one_epoch(train_dataset, model, optim, loss_fn, device)
+        val_loss = validate_one_epoch(val_dataset, model, loss_fn, device)
+
+        train_loss_graph.log_value({"loss": float(train_loss)},
+                                   step=e)
+
+        val_loss_graph.log_value({"loss": float(val_loss)},
+                                 step=e)
+
+        save_model_func = partial(save_model,
+                                  model,
+                                  torch.ones(1, 3, 256, 256).to(device))
+
+        save_state_func = partial(save_state,
+                                  e,
+                                  model,
+                                  optim,
+                                  val_loss)
+
+        model_config.save_model_and_state(save_state_func,
+                                          save_model_func,
+                                          e,
+                                          float(val_loss))
+
 ```
 
-In this example we use the in house bench tracker. It takes in all the values a regular accelerator takes in, along with
-a config dict, and a tuple of graph objects. In this case we use a Time series graph which takes in 4 parameters
-("name", line_name / list is of line names, x-axis name, y-axis name). However, many graphing options will be available in house beyond
-a time series graph!
-
-##### `log`
-To log using your tracker call `.log`
-```python filename="TrainScript.py" copy
-acc.log({"train loss": 10,
-        "graph": "train loss graph"},
-        step=1)
-```
-For the bench tracker the log function is dependent on the graph you happen to use. In this case we want to log to our time series graph
-so our dictionary consists of two keys: the line name in this case "train loss" with the y-axis as the value and graph with the name of the graph as the value.
-Finally, we use step to send our x-axis value.
-
-To see your graph as your model trains run
-
-```bash copy
-bench-kit show-ex
-```
-
-<video controls loop muted autoPlay>
-  <source src="https://sofadocsbucket.s3.us-west-2.amazonaws.com/assets/Tutorials/train-script/show_graphs.mp4" type="video/mp4" />
-  Your browser does not support the video tag.
-</video>
-
-From here select your experiment, then appropriate config and the graphs will appear
-
-#### `backward`
-
-Instead of calling `.backwards` on your loss value call it on your accelerator
-```python filename="TrainScript.py" copy
-from BenchKit.Tracking.Tracker import get_tensorboard_tracker
-import torch
-acc, train_dataset, val_dataset, model, loss_fn, optim = get_tensorboard_tracker(tracker_config,
-                                                                                 train_dataset,
-                                                                                 val_dataset, model,
-                                                                                 loss_fn, optim)
-
-loss = loss_fn(torch.Tensor([10]), torch.Tensor([100]))
-acc.backwards(loss)
-```
-
-#### `device`
-
-Hugging Face Accelerate manages device placement for the user as long as all relevant values have been passed into
-the prepare function. However, there are some cases where you will create a Tensor that needs to be fed into your
-model, and it won't initially be on the right device.
-
-For example
-```python filename="TrainScript.py" copy
-from BenchKit.Tracking.Tracker import get_tensorboard_tracker
-import torch
-acc, train_dataset, val_dataset, model, loss_fn, optim = get_tensorboard_tracker(tracker_config,
-                                                                                 train_dataset,
-                                                                                 val_dataset, model,
-                                                                                 loss_fn, optim)
-
-for batch in train_dataset:
-    target, inp = batch # on device
-    targets = targets.type(torch.FloatTensor) # returns new tensor on CPU
-```
-
-In cases like this where your tensor is no longer on the right GPU, transport it back using `accelerate.device`
-```python filename="TrainScript.py" copy
-from BenchKit.Tracking.Tracker import get_tensorboard_tracker
-import torch
-acc, train_dataset, val_dataset, model, loss_fn, optim = get_tensorboard_tracker(tracker_config,
-                                                                                 train_dataset,
-                                                                                 val_dataset, model,
-                                                                                 loss_fn, optim)
-
-for batch in train_dataset:
-    target, inp = batch # on device
-    targets = targets.type(torch.FloatTensor) # returns new tensor on CPU
-    targets = targets.to(acc.device) # puts tensor on the right GPU
-```
-
-#### Multi GPU Considerations
-
-When training using multiple GPUs each GPU is treated as an individual Process. Meaning if you are using an 8 GPU server
-there will be 8 processes of your model training on your server.
-
-This means every line of code in your training script will effectively run `N` times, where `N` is the number of processes. In most cases this is ok
-but for some operations it is not preferred.
-
-##### `print`
-When printing in most cases you may want to see a message once. To have a print statement not repeat `N` times use `Accelerate.print()`
-```python filename="TrainScript.py" copy
-from BenchKit.Tracking.Tracker import get_tensorboard_tracker
-acc, train_dataset, val_dataset, model, loss_fn, optim = get_tensorboard_tracker(tracker_config,
-                                                                                 train_dataset,
-                                                                                 val_dataset, model,
-                                                                                 loss_fn, optim)
-acc.print("I ❤️ Bench AI!!!")
-```
-
-##### `is_local_main_process`
-In general if you want an operation to only take place on one process you can use the command `Accelerate.is_local_main_process`. This will return a
-boolean value depending on if the statement is true.
-
-```python filename="TrainScript.py" copy
-from BenchKit.Tracking.Tracker import get_tensorboard_tracker
-acc, train_dataset, val_dataset, model, loss_fn, optim = get_tensorboard_tracker(tracker_config,
-                                                                                 train_dataset,
-                                                                                 val_dataset, model,
-                                                                                 loss_fn, optim)
-
-if acc.is_local_main_process:
-    acc.print("I am the main")
-```
-
-`Accelerate.log` uses this condition under the hood to make sure a log isn't sent for each process.
-
-##### `gather_for_metrics`
-
-When logging loss you don't generally want to log per process. Instead, you will want to record the combined loss of all
-processes. In scenarios like this use the `accelerate.gather_for_metrics` method. This will synchronize all tensors on each
-process into one Tensor which can now easily be logged
-
-```python filename="TrainScript.py" copy
-from BenchKit.Tracking.Tracker import get_tensorboard_tracker
-import torch
-acc, train_dataset, val_dataset, model, loss_fn, optim = get_tensorboard_tracker(tracker_config,
-                                                                                 train_dataset,
-                                                                                 val_dataset, model,
-                                                                                 loss_fn, optim)
-
-for batch in train_dataset:
-    loss = loss_fn(torch.Tensor([10]), torch.Tensor([100]))
-    full_loss: torch.Tensor = acc.gather_for_metrics(loss)
-```
-
-#### `upload_model_checkpoint`
-Use `upload_model_checkpoint` when you want to save checkpoints of your model, this method takes in your `Accelerator`
-and saves all the objects you prepared with it.
-
-```python filename="TrainScript.py" copy
-from BenchKit.Tracking.Tracker import get_tensorboard_tracker
-
-acc, train_dataset, val_dataset, model, loss_fn, optim = get_tensorboard_tracker(tracker_config,
-                                                                                 train_dataset,
-                                                                                 val_dataset, model,
-                                                                                 loss_fn, optim)
-
-upload_model_checkpoint(acc, "test-checkpoint")
-```
 
 ## Migrate Code
 Once you are ready to train your model, you can begin the code migration process. Migrating code saves your code to the cloud, so it can
@@ -293,16 +482,16 @@ python manage.py migrate-code
   Your browser does not support the video tag.
 </video>
 
-This command migrates your code with a default version of `one`. This means that if you were to make changes to this code
-and were to migrate it, it would overwrite the previous version `one` code you had. All files and folders that were created
+This command migrates your code with a default version of `1`. This means that if you were to make changes to this code
+and were to migrate it, it would overwrite the previous version `1` code you had. All files and folders that were created
 with the `start-project` command will be migrated, files not in this category will be left as is.
 
 
 ### Versioning
 
 Versioning becomes extremely useful, when you make changes to your models architecture, data, or training script.
-Through versioning you can run multiple experiments of different model versions
-and could compare the accuracy of each side by side.
+Through versioning you can run multiple experiments of different model versions and can compare the accuracy of each
+side by side.
 
 To migrate code with a specific version use this command instead:
 ```bash filename="> Terminal" copy
