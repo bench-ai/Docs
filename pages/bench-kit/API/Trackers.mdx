@@ -2,7 +2,7 @@
 ---
 ## Preface
 
-Graphs can tell us if our model is over fitting, performing poorly, or exceeding expectations. This is why `bench-kit`
+Graphs can tell us if our model is over fitting, performing poorly, or exceeding expectations. This is why `benchkit`
 has direct integrations to top of the line tracking systems such as Wandb, CometML and Tensorboard while also
 providing our own in house graphing system.
 
@@ -16,7 +16,7 @@ and integrates directly into the websites gui. It is the preferred tracker to us
 #### Time Series
 
 ```python filename="TrainScript.py" copy
-from BenchKit.tracking.graphs.time_series import TimeSeries
+from benchkit.tracking.graphs.time_series import TimeSeries
 
 train_loss_graph = TimeSeries("train loss graph",
                               "train loss",

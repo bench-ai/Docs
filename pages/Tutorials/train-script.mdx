@@ -1,15 +1,15 @@
 # Train Script and Code Migration
 
 You are now ready to start writing code to begin training your model. Start off by writing all training related scripts in
-the `TrainScript.py` file.
+the `train_script.py` file.
 
 Training using `Bench AI` is the exact same as training in regular pytorch.
 
-```python filename="TrainScript.py" copy
+```python filename="train_script.py" copy
 import torch
-from BenchKit.Data.Helpers import get_dataloader # Turns a IterableChunk to a pytorch Dataloader
-from Datasets.ProjectDatasets import MyChunkDS # The IterableChunk dataset
-from Models.ProjectModels import MyModel
+from benchkit.data.helpers import get_dataloader # Turns a IterableChunk to a pytorch Dataloader
+from datasets.project_datasets import MyChunkDS # The IterableChunk dataset
+from models.project_models import MyModel
 import torch.nn as nn
 import torch.optim as opt
 from torch.utils.data import DataLoader
@@ -132,8 +132,8 @@ are doing. To take advantage of these features start by initializing a model con
 A model config takes in 3 values: the hyperparameters used to train your model, what metric this model should be judged against, and
 whether we should maximize or minimize that metric.
 
-```python filename="TrainScript.py" copy
-from BenchKit.tracking.config import Config
+```python filename="train_script.py" copy
+from benchkit.tracking.config import Config
 
 hyperparameters = {
         "epochs": 10,
@@ -155,9 +155,9 @@ the iteration you are on, and the value of the evaluation criteria at that itera
 
 Here is an example of how to save checkpoints and saves in vanilla pytorch.
 
-```python filename="TrainScript.py" copy
-from BenchKit.tracking.config import Config
-from Models.ProjectModels import MyModel
+```python filename="train_script.py" copy
+from benchkit.tracking.config import Config
+from models.project_models import MyModel
 from functools import partial
 import torch.optim as opt
 import torch
@@ -249,9 +249,9 @@ You can subsequently see all the checkpoints and saves of your model by running
 If you wish to visualize how your model is performing you can incorporate one of our trackers. Here we will show how to
 use our `TimeSeries` graph.
 
-```python filename="TrainScript.py" copy
-from BenchKit.tracking.config import Config
-from BenchKit.tracking.graphs.time_series import TimeSeries
+```python filename="train_script.py" copy
+from benchkit.tracking.config import Config
+from benchkit.tracking.graphs.time_series import TimeSeries
 
 def main():
     hyperparameters = {
@@ -273,7 +273,7 @@ def main():
 ```
 
 If you wish to have multiple lines in your graph you can do this
-```python filename="TrainScript.py" copy
+```python filename="train_script.py" copy
 val_loss_graph = TimeSeries("val_loss", # Name of the graph
                              model_config, # The Config for the model being trained
                              ("l1", "l2"), # name of the lines
@@ -282,7 +282,7 @@ val_loss_graph = TimeSeries("val_loss", # Name of the graph
 ```
 
 To plot a point call `.log_value`
-```python filename="TrainScript.py" copy
+```python filename="train_script.py" copy
 """
 Pass in two values, the first will be a dictionary where the key is the name of the line, and the value is the
 y-axis value, then pass in a step that is the x-axis value
@@ -292,16 +292,16 @@ val_loss_graph.log_value({"loss": 0.0}, step=0)
 
 ### Full Code
 
-```python filename="TrainScript.py" copy
+```python filename="train_script.py" copy
 from functools import partial
 
 import torch
 import os
-from BenchKit.Data.Helpers import get_dataloader
-from Datasets.ProjectDatasets import MyChunkDS
-from Models.ProjectModels import MyModel
-from BenchKit.tracking.config import Config
-from BenchKit.tracking.graphs.time_series import TimeSeries
+from benchkit.data.helpers import get_dataloader
+from datasets.project_datasets import MyChunkDS
+from models.project_models import MyModel
+from benchkit.tracking.config import Config
+from benchkit.tracking.graphs.time_series import TimeSeries
 import torch.nn as nn
 import torch.optim as opt
 from tqdm import tqdm
@@ -469,7 +469,7 @@ def main():
 
 
 ## Migrate Code
-Once you are ready to train your model, you can begin the code migration process. Migrating code saves your code to the cloud, so it can
+Once you are ready to train your model, you can begin the code migration process. Migrating code saves your code to the cloud, so it can be
 loaded on any server you want to train with.
 
 Run:
@@ -500,7 +500,7 @@ python manage.py migrate-code <version: int>
 
 To see all your current versions run this command
 ```bash filename="> Terminal" copy
-bench-kit show-vs
+benchkit show-vs
 ```
 <video controls loop muted autoPlay>
   <source src="https://sofadocsbucket.s3.us-west-2.amazonaws.com/assets/Tutorials/train-script/show-vs.mp4" type="video/mp4" />

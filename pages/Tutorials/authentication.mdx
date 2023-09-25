@@ -1,4 +1,4 @@
-# Bench Kit Authentication
+# `benchkit` Authentication
 
 <video controls loop muted autoPlay>
   <source src="https://sofadocsbucket.s3.us-west-2.amazonaws.com/assets/Tutorials/authentication/project_creation.mp4" type="video/mp4" />
@@ -25,13 +25,13 @@ Create your project and copy your `api-key`. You will need it for authentication
 
 ## Sync Your Project
 
-After installing `bench-kit` we can begin connecting your codebase to your Bench AI project
+After installing `benchkit` we can begin connecting your codebase to your Bench AI project
 
 ### Run Command
 
 Run the following command in the root directory to connect your project and sync:
 ```bash filename="> Terminal" copy
-bench-kit start-project <project-id> <api-key>
+benchkit start-project <project-id> <api-key>
 ```
 import { Callout } from 'nextra/components'
 
@@ -52,23 +52,23 @@ import { Callout } from 'nextra/components'
 Upon starting your project you will notice this directory structure
 
 ```plaintext
-|-- Datasets
+|-- datasets
 |   |-- __init__.py
-|   |-- ProjectDatasets.py
+|   |-- project_datasets.py
 |
-|-- Models
+|-- models
 |   |-- __init__.py
-|   |-- ProjectModels.py
+|   |-- project_models.py
 |
 |-- dependencies.txt
 |-- manage.py
-|-- TrainScript.py
+|-- train_script.py
 ```
 
-- In the `Datasets` directory you will add your datasets and dataloaders
-- In the `Models` directory you will add files related to your model
-- You will add your training process to the `TrainScript.py` file
-- You will add additional dependencies besides `pytorch` and `bench-kit` in the `dependencies.txt` file
+- In the `datasets` directory you will add your datasets and dataloaders
+- In the `models` directory you will add files related to your model
+- You will add your training process to the `train_script.py` file
+- You will add additional dependencies besides `pytorch` and `benchkit` in the `dependencies.txt` file
 - The `manage.py` will never be edited and will be used to make migrations to the cloud.
 
 All this will be covered more in depth in the following sections

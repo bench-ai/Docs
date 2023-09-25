@@ -1,14 +1,14 @@
-# Bench Kit Installation
+# `benchkit` Installation
 
 Requirements:
 - [Bench AI Account ↗](https://bench-ai.com/signup)
-- [Python](https://www.python.org/downloads/) >= 3.10
+- [python](https://www.python.org/downloads/) >= 3.10
 
 ## Installing from PyPI
 
 import { Callout } from 'nextra/components'
 
-<b>bench-kit</b> can be installed via PyPI
+<b>benchkit</b> can be installed via PyPI
 
 <Callout>
     Currently only [PyTorch ↗](https://pytorch.org/get-started/locally/) >= 2.0.0 is supported
@@ -19,10 +19,32 @@ import { Callout } from 'nextra/components'
 </Callout>
 
 ```bash filename="> Terminal" copy
-pip install git+https://github.com/Bench-ai/BenchKit.git
+pip install benchkit
 ```
 
-Verify the installation by running:
+## Build from Source
+clone your own personal copy of `benchkit`
+
 ```bash filename="> Terminal" copy
-bench-kit --version
+git clone https://github.com/bench-ai/benchkit.git
 ```
+make a virtual environment
+```bash filename="> Terminal" copy
+python3.10 -m venv venv
+source venv/bin/activate
+```
+install poetry(the build tool)
+```bash filename="> Terminal" copy
+pip install poetry
+```
+Install all requirements
+```bash filename="> Terminal" copy
+poetry install
+```
+
+## Verify the installation
+```bash filename="> Terminal" copy
+benchkit --version
+```
+
+

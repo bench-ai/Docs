@@ -4,7 +4,7 @@ Bench AI offers users top of the line servers, in various different configuratio
 Users can train their models on up to 8 gpu's, however to fully utilize these configurations requires the use of
 distributed training libraries.
 
-`bench-kit` directly integrates with Hugging Face Accelerate allowing users to train their models on distributed systems
+`benchkit` directly integrates with Hugging Face Accelerate allowing users to train their models on distributed systems
 without needing to change most of their code.
 
 ## `Accelerator`
@@ -25,9 +25,9 @@ Objects that are generally passed into this method are:
 from accelerate import Accelerator
 import torch.nn as nn
 import torch.optim as opt
-from Models.ProjectModels import MyModel
-from BenchKit.Data.Helpers import get_dataloader
-from Datasets.ProjectDatasets import MyChunker
+from models.project_models import MyModel
+from benchkit.data.helpers import get_dataloader
+from datasets.project_datasets import MyChunker
 train_chunker = MyChunker()
 
 loss_fn = nn.BCELoss()
@@ -51,7 +51,7 @@ These additional arguments can be found [here ↗](https://huggingface.co/docs/a
 This method will return back the accelerator, followed by all the prepared objects
 
 ```python filename="TrainScript.py" copy
-from BenchKit.distributed.accelerate.helpers import get_bench_accelerator
+from benchkit.distributed.accelerate.helpers import get_bench_accelerator
 
 loss_fn = nn.BCELoss()
 model = MyModel(64)
@@ -71,13 +71,13 @@ along with an accelerator initialized with the respective graphs.
 
 ```python filename="TrainScript.py" copy
 import torch.nn as nn
-from BenchKit.tracking.config import Config
-from BenchKit.distributed.accelerate.helpers import get_accelerator_with_bench_tracker
+from benchkit.tracking.config import Config
+from benchkit.distributed.accelerate.helpers import get_accelerator_with_bench_tracker
 import torch.optim as opt
-from Models.ProjectModels import MyModel
-from BenchKit.Data.Helpers import get_dataloader
-from Datasets.ProjectDatasets import MyChunker
-from BenchKit.tracking.graphs.time_series import TimeSeries
+from models.project_models import MyModel
+from benchkit.data.helpers import get_dataloader
+from datasets.project_datasets import MyChunker
+from benchkit.tracking.graphs.time_series import TimeSeries
 from torch.utils.data import DataLoader
 
 train_chunker = MyChunker()
@@ -151,7 +151,7 @@ model, and it won't initially be on the right device.
 
 For example
 ```python filename="TrainScript.py" copy
-from BenchKit.distributed.accelerate.helpers import get_bench_accelerator
+from benchkit.distributed.accelerate.helpers import get_bench_accelerator
 import torch
 acc, train_dataset, val_dataset, model, loss_fn, optim = get_bench_accelerator(train_dataset,
                                                                                val_dataset, model,

@@ -1,4 +1,4 @@
-# Bench Kit Data Migration and Data Loading
+# `benchkit` Data Migration and Data Loading
 
 ## Preface
 
@@ -31,25 +31,26 @@ To utilize the data migration functionality two classes need to be utilized.
 
 ### ProcessorDataset
 
-```python filename="ProjectDatasets.py" copy
-from BenchKit.Data.Datasets import ProcessorDataset
+```python filename="project_datasets.py" copy
+from benchkit.data.datasets import ProcessorDataset
 
 class MyProcessorDataset(ProcessorDataset):
     ...
 ```
 
-The `ProcessorDataset` class allows `bench-kit` to process your data, zip it, and upload it to the cloud.
+The `ProcessorDataset` class allows `benchkit` to process your data, zip it, and upload it to the cloud.
 
 To begin inherit from the `ProcessorDataset` class and write four methods.
 
 #### `__init__`
 The constructor remains standard, here you will declare your objects that let you access your data along with `FileSaver`'s.
 
-A `FileSaver` let's `bench-kit` know what kind of data you are saving. This will be more relevant when we go over loading the data.
+A `FileSaver` let's `benchkit` know what kind of data you are saving. This will be more relevant when we go over loading the data.
 
-```python filename="ProjectDatasets.py" copy
-from BenchKit.Data.Datasets import ProcessorDataset
-from BenchKit.Data.FileSaver import NumericFile
+```python filename="project_datasets.py" copy
+from benchkit.data.datasets import ProcessorDataset
+from benchkit.data import NumericFile
+
 
 class MyProcessorDataset(ProcessorDataset):
     def __init__(self, data_list: list[int]):
@@ -76,9 +77,9 @@ These are the currently implemented FileSaver's:
 
 import { Callout } from 'nextra/components'
 
-```python filename="ProjectDatasets.py" copy
-from BenchKit.Data.Datasets import ProcessorDataset
-from BenchKit.Data.FileSaver import NumericFile
+```python filename="project_datasets.py" copy
+from benchkit.data.datasets import ProcessorDataset
+from benchkit.data import NumericFile
 
 class MyProcessorDataset(ProcessorDataset):
     def _get_savers(self):
@@ -88,12 +89,12 @@ class MyProcessorDataset(ProcessorDataset):
 #### `_get_data`
 
 `_get_data` is very similar to `__getitem__`. The method takes in an index corresponding to a singular instance of your data. The main difference is instead
-of returning that item we will instead call the append method on the appropriate `FileSaver`. This allows `bench-kit` to save that piece of data to its relevant
+of returning that item we will instead call the append method on the appropriate `FileSaver`. This allows `benchkit` to save that piece of data to its relevant
 chunk.
 
-```python filename="ProjectDatasets.py" copy
-from BenchKit.Data.Datasets import ProcessorDataset
-from BenchKit.Data.FileSaver import NumericFile
+```python filename="project_datasets.py" copy
+from benchkit.data.datasets import ProcessorDataset
+from benchkit.data import NumericFile
 
 class MyProcessorDataset(ProcessorDataset):
     def _get_data(self, idx: int):
@@ -103,9 +104,9 @@ class MyProcessorDataset(ProcessorDataset):
 #### `__len__`
 In  `__len__` return the size of your dataset
 
-```python filename="ProjectDatasets.py" copy
-from BenchKit.Data.Datasets import ProcessorDataset
-from BenchKit.Data.FileSaver import NumericFile
+```python filename="project_datasets.py" copy
+from benchkit.data.datasets import ProcessorDataset
+from benchkit.data import NumericFile
 
 class MyProcessorDataset(ProcessorDataset):
     def __len__(self):
@@ -117,8 +118,8 @@ your model.
 
 ### IterableChunk
 
-```python filename="ProjectDatasets.py" copy
-from BenchKit.Data.Datasets import IterableChunk
+```python filename="project_datasets.py" copy
+from benchkit.data.datasets import IterableChunk
 
 class MyChunker(IterableChunk):
     ...
@@ -132,7 +133,7 @@ To use the `IterableChunk` class inherit from it, and implement two methods:
 #### `__init__`
 Here the only requirement is to make a call to the super class
 
-```python filename="ProjectDatasets.py" copy
+```python filename="project_datasets.py" copy
 class MyChunker(IterableChunk):
     def __init__(self):
         super().__init__()
@@ -148,8 +149,8 @@ For example if I used a `NumFile` saver to save my numeric data and a `BooleanFi
 Then I could use `unpack_data` to get my data and apply transformations to it. The only requirement in the method being
 you make a `super` call to unpack data first.
 
-```python filename="ProjectDatasets.py" copy
-from BenchKit.Data.Datasets import IterableChunk
+```python filename="project_datasets.py" copy
+from benchkit.data.datasets import IterableChunk
 
 class MyChunker(IterableChunk):
     def unpack_data(self,
@@ -161,7 +162,7 @@ class MyChunker(IterableChunk):
         return num + 10, int(boolean) * 100
 ```
 
-Great! We now have a class to upload our data, and a class to download the data. Now bench-kit has the information it
+Great! We now have a class to upload our data, and a class to download the data. Now benchkit has the information it
 needs to make your dataset cloud ready!
 
 ## Migrate your Data to the Cloud
@@ -170,7 +171,7 @@ You are now ready to migrate your data to the cloud
 
 ### `main`
 
-In order for bench-kit to understand the classes you are using you need to return some values in the `main` method.
+In order for benchkit to understand the classes you are using you need to return some values in the `main` method.
 
 Return a list of tuples, of which each Tuple should represent a new dataset you wish to upload.
 
@@ -180,7 +181,7 @@ Each tuple needs 3 items
 - The `IterableChunk` for that dataset
 - A name you would like to give that dataset
 
-```python filename="ProjectDatasets.py" copy
+```python filename="project_datasets.py" copy
 def main():
     du = MyProcessorDataset(my_train_path)
     dc = MyChunker()
@@ -210,7 +211,7 @@ python manage.py migrate-data <dataset-name>
         Your browser does not support the video tag.
 </video>
 
-Using the classes you provided bench-kit will:
+Using the classes you provided benchkit will:
 - Chunk your dataset using your ProcessorDataset class
 - Verify your DataLoader is compatible with the chunks using your IterableChunk class
 - Upload your chunks to the cloud
@@ -235,12 +236,12 @@ python manage.py migrate-data --up
 
 ## Cloud Dataloader
 
-To train your model in pytorch a dataset is wrapped with a dataloader. This process does not change with `bench-kit`,
+To train your model in pytorch a dataset is wrapped with a dataloader. This process does not change with `benchkit`,
 however we recommend you make a call to `get_dataloader`. `get_dataloader` will return your ChunkDataset wrapped with
 a cloud ready dataloader. To get your dataloader simply pass in your ChunkDataset and the name of the dataset. You can 
 also pass in the worker count and the batch size if the defaults don't suit you.
 
-```python filename="ProjectDatasets.py" copy
+```python filename="project_datasets.py" copy
 from BenchKit.Data.Helpers import get_dataloader
 
 dc = MyChunker()

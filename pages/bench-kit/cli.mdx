@@ -6,23 +6,23 @@
 
 Connects your local code to the bench-ai project. Creates required directory structure.
 ```bash filename="> Terminal" copy
-bench-kit <project-id> <api-key>
+benchkit <project-id> <api-key>
 ```
 
 ### Project Info
 
 Shows info about your project
 ```bash filename="> Terminal" copy
-bench-kit project-info
+benchkit project-info
 ```
 ![project-info](https://sofadocsbucket.s3.us-west-2.amazonaws.com/assets/bench-kit/CLI/project-info.png)
 
 ### Logout
 
-Makes sure no other bench-kit command can be executed with the start-project credentials. User must restart project to gain
+Makes sure no other benchkit command can be executed with the start-project credentials. User must restart project to gain
 access.
 ```bash filename="> Terminal" copy
-bench-kit logout
+benchkit logout
 ```
 
 ## Datasets
@@ -31,7 +31,7 @@ bench-kit logout
 
 Shows info about all your datasets
 ```bash filename="> Terminal" copy
-bench-kit show-ds
+benchkit show-ds
 ```
 
 ![show-ds](https://sofadocsbucket.s3.us-west-2.amazonaws.com/assets/bench-kit/CLI/show-ds.png)
@@ -39,7 +39,7 @@ bench-kit show-ds
 
 Deletes a dataset based on the number provided
 ```bash filename="> Terminal" copy
-bench-kit del-ds
+benchkit del-ds
 ```
 ![del-ds](https://sofadocsbucket.s3.us-west-2.amazonaws.com/assets/bench-kit/CLI/del-ds.png)
 
@@ -49,7 +49,7 @@ bench-kit del-ds
 
 Shows info about all your code versions
 ```bash filename="> Terminal" copy
-bench-kit show-vs
+benchkit show-vs
 ```
 ![del-vs](https://sofadocsbucket.s3.us-west-2.amazonaws.com/assets/bench-kit/CLI/show-vs.png)
 
@@ -57,7 +57,7 @@ bench-kit show-vs
 
 Deletes the version you specify
 ```bash filename="> Terminal" copy
-bench-kit del-vs
+benchkit del-vs
 ```
 ![del-vs](https://sofadocsbucket.s3.us-west-2.amazonaws.com/assets/bench-kit/CLI/del-vs.png)
 
@@ -65,7 +65,7 @@ bench-kit del-vs
 
 Pulls the version code down to your local machine
 ```bash filename="> Terminal" copy
-bench-kit pull-vs <version-number>
+benchkit pull-vs <version-number>
 ```
 
 ## Checkpoints
@@ -74,14 +74,14 @@ bench-kit pull-vs <version-number>
 
 Shows all checkpoints that have been saved
 ```bash filename="> Terminal" copy
-bench-kit show-check
+benchkit show-check
 ```
 ![show-check](https://sofadocsbucket.s3.us-west-2.amazonaws.com/assets/bench-kit/CLI/show-check.png)
 ### Get Checkpoint
 
 Pulls checkpoint to local machine
 ```bash filename="> Terminal" copy
-bench-kit get-check
+benchkit get-check
 ```
 ![show-check](https://sofadocsbucket.s3.us-west-2.amazonaws.com/assets/bench-kit/CLI/get-check.png)
 
@@ -89,7 +89,7 @@ bench-kit get-check
 
 Deletes Checkpoint
 ```bash filename="> Terminal" copy
-bench-kit del-check
+benchkit del-check
 ```
 ![show-check](https://sofadocsbucket.s3.us-west-2.amazonaws.com/assets/bench-kit/CLI/del-check.png)
 
@@ -99,7 +99,7 @@ bench-kit del-check
 
 See logs or Experiment Metrics
 ```bash filename="> Terminal" copy
-bench-kit show-ex
+benchkit show-ex
 ```
 
 #### Show Logs
