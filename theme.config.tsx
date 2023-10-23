@@ -73,8 +73,8 @@ const config: DocsThemeConfig = {
     banner: {
         key: 'beta-release',
         text: (
-            <a href="https://forms.gle/3HDGxeQxJt9CHK9Q9" target="_blank" rel="noreferrer">
-                🎉 Bench AI Beta is Released. Join the Waitlist →
+            <a href="https://bench-ai.com/signup" target="_blank" rel="noreferrer">
+                🎉 Bench AI Beta is Released. Sign Up for Free! →
             </a>
         )
     },
